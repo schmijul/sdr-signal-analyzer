@@ -1,0 +1,8 @@
+/build/
+/.venv/
+/*.sigmf-data
+/*.sigmf-meta
+/*.bin
+/*.bin.json
+__pycache__/
+python/sdr_signal_analyzer/_sdr_signal_analyzer*.so
