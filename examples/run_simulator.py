@@ -18,21 +18,21 @@ def main() -> int:
         raise SystemExit(session.last_error())
 
     try:
-      for _ in range(30):
-        snapshot = session.poll_snapshot()
-        if snapshot:
-          print(
-              f"frame={snapshot.sequence} "
-              f"noise={snapshot.analysis.noise_floor_dbfs:.1f} dBFS "
-              f"detections={len(snapshot.analysis.detections)}"
-          )
-          for detection in snapshot.analysis.detections[:3]:
-              print(
-                  f"  {detection.center_frequency_hz/1e6:.3f} MHz "
-                  f"{detection.bandwidth_hz/1e3:.1f} kHz "
-                  f"{', '.join(detection.labels)}"
-              )
-        time.sleep(0.1)
+        for _ in range(30):
+            snapshot = session.poll_snapshot()
+            if snapshot:
+                print(
+                    f"frame={snapshot.sequence} "
+                    f"noise={snapshot.analysis.noise_floor_dbfs:.1f} dBFS "
+                    f"detections={len(snapshot.analysis.detections)}"
+                )
+                for detection in snapshot.analysis.detections[:3]:
+                    print(
+                        f"  {detection.center_frequency_hz/1e6:.3f} MHz "
+                        f"{detection.bandwidth_hz/1e3:.1f} kHz "
+                        f"{', '.join(detection.labels)}"
+                    )
+            time.sleep(0.1)
     finally:
         session.stop()
     return 0

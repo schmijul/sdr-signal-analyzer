@@ -8,6 +8,7 @@ namespace sdr_analyzer {
 enum class SourceKind {
   kSimulator,
   kReplay,
+  kRtlTcp,
   kSoapy,
 };
 
@@ -26,6 +27,8 @@ struct SourceConfig {
   std::string device_string;
   std::string input_path;
   std::string metadata_path;
+  std::string network_host = "127.0.0.1";
+  int network_port = 1234;
   double center_frequency_hz = 100e6;
   double sample_rate_hz = 2.4e6;
   double gain_db = 10.0;

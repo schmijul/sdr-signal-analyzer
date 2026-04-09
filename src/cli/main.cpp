@@ -16,7 +16,8 @@ using sdr_analyzer::SourceKind;
 
 void PrintUsage() {
   std::cout
-      << "Usage: sdr-analyzer-cli [--source simulator|replay|soapy] [--input FILE] [--meta FILE]\n"
+      << "Usage: sdr-analyzer-cli [--source simulator|replay|rtl_tcp|soapy] [--input FILE] [--meta FILE]\n"
+      << "                        [--host HOST] [--port PORT]\n"
       << "                        [--center-hz HZ] [--sample-rate HZ] [--gain-db DB]\n"
       << "                        [--fft-size N] [--frames N] [--record-base PATH]\n"
       << "                        [--record-format raw|sigmf] [--loop]\n";
@@ -25,6 +26,9 @@ void PrintUsage() {
 SourceKind ParseSourceKind(const std::string& value) {
   if (value == "replay") {
     return SourceKind::kReplay;
+  }
+  if (value == "rtl_tcp") {
+    return SourceKind::kRtlTcp;
   }
   if (value == "soapy") {
     return SourceKind::kSoapy;
@@ -60,6 +64,10 @@ int main(int argc, char** argv) {
       source_config.input_path = next_value("--input");
     } else if (arg == "--meta") {
       source_config.metadata_path = next_value("--meta");
+    } else if (arg == "--host") {
+      source_config.network_host = next_value("--host");
+    } else if (arg == "--port") {
+      source_config.network_port = std::stoi(next_value("--port"));
     } else if (arg == "--center-hz") {
       source_config.center_frequency_hz = std::stod(next_value("--center-hz"));
     } else if (arg == "--sample-rate") {

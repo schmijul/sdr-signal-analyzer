@@ -2,6 +2,7 @@
 
 #include <filesystem>
 
+#include "src/sdr/rtltcp_source.hpp"
 #include "src/io/metadata.hpp"
 #include "src/sdr/replay_source.hpp"
 #include "src/sdr/simulator_source.hpp"
@@ -16,6 +17,8 @@ std::unique_ptr<ISampleSource> CreateSource(const SourceConfig& config, std::str
       auto replay = std::make_unique<ReplaySource>();
       return replay;
     }
+    case SourceKind::kRtlTcp:
+      return std::make_unique<RtlTcpSource>();
     case SourceKind::kSoapy:
 #if defined(SDR_ANALYZER_HAVE_SOAPYSDR)
       extern std::unique_ptr<ISampleSource> CreateSoapySource();

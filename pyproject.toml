@@ -8,16 +8,11 @@ version = "0.1.0"
 description = "C++-first SDR spectrum analyzer with Python GUI."
 readme = "README.md"
 requires-python = ">=3.10"
-dependencies = [
-  "numpy>=1.26",
-  "PySide6>=6.7; platform_system != 'Linux' or extra == 'gui'",
-  "pyqtgraph>=0.13; platform_system != 'Linux' or extra == 'gui'",
-]
+dependencies = []
 
 [project.optional-dependencies]
 gui = [
   "PySide6>=6.7",
-  "pyqtgraph>=0.13",
 ]
 
 [project.scripts]
@@ -26,4 +21,3 @@ sdr-signal-analyzer-gui = "sdr_signal_analyzer.gui:main"
 [tool.scikit-build]
 cmake.build-type = "Release"
 wheel.packages = ["python/sdr_signal_analyzer"]
-
