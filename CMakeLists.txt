@@ -26,6 +26,7 @@ add_library(
   src/dsp/analyzer.cpp
   src/io/metadata.cpp
   src/io/recorder.cpp
+  src/sdr/rtltcp_source.cpp
   src/sdr/source_factory.cpp
   src/sdr/simulator_source.cpp
   src/sdr/replay_source.cpp
@@ -68,3 +69,8 @@ add_executable(test_pipeline tests/test_pipeline.cpp)
 target_link_libraries(test_pipeline PRIVATE sdr_analyzer)
 target_include_directories(test_pipeline PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 add_test(NAME pipeline COMMAND test_pipeline)
+
+add_executable(test_rtltcp tests/test_rtltcp.cpp)
+target_link_libraries(test_rtltcp PRIVATE sdr_analyzer Threads::Threads)
+target_include_directories(test_rtltcp PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+add_test(NAME rtltcp COMMAND test_rtltcp)

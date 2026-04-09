@@ -12,6 +12,7 @@ PYBIND11_MODULE(_sdr_signal_analyzer, module) {
   py::enum_<SourceKind>(module, "SourceKind")
       .value("SIMULATOR", SourceKind::kSimulator)
       .value("REPLAY", SourceKind::kReplay)
+      .value("RTL_TCP", SourceKind::kRtlTcp)
       .value("SOAPY", SourceKind::kSoapy);
 
   py::enum_<SampleFormat>(module, "SampleFormat")
@@ -28,6 +29,8 @@ PYBIND11_MODULE(_sdr_signal_analyzer, module) {
       .def_readwrite("device_string", &SourceConfig::device_string)
       .def_readwrite("input_path", &SourceConfig::input_path)
       .def_readwrite("metadata_path", &SourceConfig::metadata_path)
+      .def_readwrite("network_host", &SourceConfig::network_host)
+      .def_readwrite("network_port", &SourceConfig::network_port)
       .def_readwrite("center_frequency_hz", &SourceConfig::center_frequency_hz)
       .def_readwrite("sample_rate_hz", &SourceConfig::sample_rate_hz)
       .def_readwrite("gain_db", &SourceConfig::gain_db)

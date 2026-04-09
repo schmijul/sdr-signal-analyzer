@@ -1,6 +1,6 @@
 # SDR Signal Analyzer
 
-C++-first SDR spectrum analyzer with a Python GUI on top. The backend owns device access, DSP, detection, recording, replay, and analysis so it can run headless through a CLI or be embedded into other frontends without dragging Python into the core.
+C++-first SDR spectrum analyzer with a Python GUI on top. The backend owns device access, DSP, detection, recording, replay, and analysis so it can run headless through a CLI or be embedded into other frontends without dragging Python into the core. The GUI uses only PySide6 and custom Qt painting, not `pyqtgraph` or `numpy`.
 
 ## Architecture
 
@@ -10,7 +10,7 @@ C++-first SDR spectrum analyzer with a Python GUI on top. The backend owns devic
 - `src/dsp/`: FFT, averaging, peak hold, peak detection, bandwidth/noise estimation, coarse classification
 - `src/io/`: `.bin` IQ recording, SigMF metadata, replay helpers
 - `src/cli/`: backend-only CLI
-- `python/sdr_signal_analyzer/`: `pybind11` bindings and optional PySide6/PyQtGraph GUI
+- `python/sdr_signal_analyzer/`: `pybind11` bindings and optional PySide6 GUI
 - `examples/`: simulator-driven usage examples
 
 ## MVP Features
@@ -31,6 +31,10 @@ C++-first SDR spectrum analyzer with a Python GUI on top. The backend owns devic
 - IQ recording and replay:
   - raw `.bin` + metadata sidecar
   - SigMF `.sigmf-data` + `.sigmf-meta`
+- Live source options:
+  - built-in simulator
+  - self-implemented `rtl_tcp` network backend
+  - optional SoapySDR backend when present at build time
 
 ## Build
 
@@ -51,7 +55,9 @@ python3 -m pip install -e .[gui]
 python3 -m sdr_signal_analyzer
 ```
 
-The GUI dependencies are optional. The backend and CLI still build without `PySide6` or `pyqtgraph`.
+The GUI dependency is optional. The backend and CLI still build without `PySide6`.
+
+The backend does not rely on NumPy, SciPy, or plotting toolkits. FFT, detection, bandwidth/noise estimation, recording, replay, and the `rtl_tcp` client are implemented in the repo itself. SoapySDR remains optional for broader hardware coverage, but it is no longer the only live-device path.
 
 ## CLI Examples
 
@@ -59,6 +65,18 @@ Run the simulator backend:
 
 ```bash
 ./build/sdr-analyzer-cli --source simulator --frames 20
+```
+
+Connect to an `rtl_tcp` server without SoapySDR:
+
+```bash
+./build/sdr-analyzer-cli \
+  --source rtl_tcp \
+  --host 127.0.0.1 \
+  --port 1234 \
+  --center-hz 100000000 \
+  --sample-rate 2400000 \
+  --gain-db 20
 ```
 
 Record a replayable capture:

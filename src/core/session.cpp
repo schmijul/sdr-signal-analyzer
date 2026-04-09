@@ -196,6 +196,8 @@ class AnalyzerSession::Impl {
           snapshots_.pop_front();
         }
       }
+
+      std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
 
     if (source_) {
