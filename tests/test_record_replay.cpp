@@ -1,10 +1,17 @@
+#include <algorithm>
+#include <array>
 #include <chrono>
 #include <cmath>
+#include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <optional>
 #include <stdexcept>
+#include <string>
+#include <sstream>
 #include <thread>
+#include <vector>
 
 #include "sdr_analyzer/session.hpp"
 #include "src/io/metadata.hpp"
@@ -20,6 +27,7 @@ using sdr_analyzer::SourceKind;
 
 const auto kFixtureRoot =
     std::filesystem::path(__FILE__).parent_path() / "fixtures";
+const auto kCliBinary = std::filesystem::path("./sdr-analyzer-cli");
 
 void Require(const bool condition, const std::string &message) {
   if (!condition) {
@@ -63,6 +71,243 @@ void RequireDetectionNear(const sdr_analyzer::AnalyzerSnapshot &snapshot,
   }
   throw std::runtime_error("Expected a detection near " +
                            std::to_string(expected_frequency_hz) + " Hz.");
+}
+
+struct ExpectedDetection {
+  double offset_hz = 0.0;
+  double tolerance_hz = 0.0;
+  std::optional<std::string> required_label;
+  std::optional<double> minimum_bandwidth_hz;
+  std::optional<double> maximum_bandwidth_hz;
+};
+
+struct FixtureExpectation {
+  std::string name;
+  std::string data_file;
+  std::string metadata_file;
+  std::vector<ExpectedDetection> expected_detections;
+  std::optional<std::string> required_label;
+  std::optional<double> minimum_peak_minus_noise_db;
+  std::optional<double> minimum_bandwidth_hz;
+  std::optional<double> maximum_bandwidth_hz;
+  std::optional<double> minimum_detection_span_hz;
+};
+
+void RequireDetectionMatches(const sdr_analyzer::AnalyzerSnapshot &snapshot,
+                             const double center_frequency_hz,
+                             const FixtureExpectation &fixture,
+                             const ExpectedDetection &expected) {
+  for (const auto &detection : snapshot.analysis.detections) {
+    if (std::abs(detection.center_frequency_hz -
+                 (center_frequency_hz + expected.offset_hz)) >
+        expected.tolerance_hz) {
+      continue;
+    }
+    if (expected.required_label &&
+        std::find(detection.labels.begin(), detection.labels.end(),
+                  *expected.required_label) == detection.labels.end()) {
+      continue;
+    }
+    if (expected.minimum_bandwidth_hz &&
+        detection.bandwidth_hz < *expected.minimum_bandwidth_hz) {
+      continue;
+    }
+    if (expected.maximum_bandwidth_hz &&
+        detection.bandwidth_hz > *expected.maximum_bandwidth_hz) {
+      continue;
+    }
+    return;
+  }
+
+  throw std::runtime_error("Fixture " + fixture.name +
+                           " did not produce the expected detection near " +
+                           std::to_string(center_frequency_hz + expected.offset_hz) +
+                           " Hz.");
+}
+
+sdr_analyzer::AnalyzerSnapshot
+ReplayFixture(const FixtureExpectation &fixture,
+              const ProcessingConfig &processing,
+              const double center_frequency_hz,
+              const double sample_rate_hz) {
+  SourceConfig source;
+  source.kind = SourceKind::kReplay;
+  source.input_path = (kFixtureRoot / fixture.data_file).string();
+  source.metadata_path = (kFixtureRoot / fixture.metadata_file).string();
+  source.frame_samples = processing.fft_size;
+  source.sample_rate_hz = sample_rate_hz;
+  source.center_frequency_hz = center_frequency_hz;
+
+  AnalyzerSession session(source, processing);
+  Require(session.start(), "Replay fixture failed to start: " +
+                               session.last_error());
+  const auto snapshot = WaitForSnapshot(
+      session, [](const sdr_analyzer::AnalyzerSnapshot &snapshot) {
+        return !snapshot.analysis.detections.empty();
+      });
+  session.stop();
+  return snapshot;
+}
+
+void TestSignalFixtures() {
+  const double center_frequency_hz = 100e6;
+  const double sample_rate_hz = 2.4e6;
+
+  const FixtureExpectation single_tone{
+      .name = "single_tone",
+      .data_file = "single_tone.sigmf-data",
+      .metadata_file = "single_tone.sigmf-meta",
+      .expected_detections = {
+          {.offset_hz = 150000.0, .tolerance_hz = 2000.0,
+           .required_label = std::string("narrowband"),
+           .minimum_bandwidth_hz = 1000.0, .maximum_bandwidth_hz = 20000.0},
+      },
+  };
+
+  const FixtureExpectation multi_tone{
+      .name = "multi_tone",
+      .data_file = "multi_tone.sigmf-data",
+      .metadata_file = "multi_tone.sigmf-meta",
+      .expected_detections = {
+          {.offset_hz = -210937.5, .tolerance_hz = 3000.0,
+           .required_label = std::string("narrowband")},
+          {.offset_hz = 58593.75, .tolerance_hz = 3000.0,
+           .required_label = std::string("narrowband")},
+          {.offset_hz = 304687.5, .tolerance_hz = 3000.0,
+           .required_label = std::string("narrowband")},
+      },
+  };
+
+  const FixtureExpectation burst{
+      .name = "burst",
+      .data_file = "burst.sigmf-data",
+      .metadata_file = "burst.sigmf-meta",
+      .expected_detections = {
+          {.offset_hz = 150000.0, .tolerance_hz = 2000.0,
+           .required_label = std::string("burst-like"),
+           .minimum_bandwidth_hz = 1000.0, .maximum_bandwidth_hz = 25000.0},
+      },
+  };
+
+  const FixtureExpectation weak{
+      .name = "weak",
+      .data_file = "weak.sigmf-data",
+      .metadata_file = "weak.sigmf-meta",
+      .expected_detections = {
+          {.offset_hz = -90000.0, .tolerance_hz = 3000.0},
+      },
+      .minimum_peak_minus_noise_db = 4.0,
+  };
+
+  const FixtureExpectation wideband{
+      .name = "wideband",
+      .data_file = "wideband.sigmf-data",
+      .metadata_file = "wideband.sigmf-meta",
+      .expected_detections = {
+          {.offset_hz = -20000.0, .tolerance_hz = 5000.0},
+          {.offset_hz = 0.0, .tolerance_hz = 5000.0},
+          {.offset_hz = 20000.0, .tolerance_hz = 5000.0},
+      },
+      .minimum_detection_span_hz = 100000.0,
+  };
+
+  const FixtureExpectation clipped{
+      .name = "clipped",
+      .data_file = "clipped.sigmf-data",
+      .metadata_file = "clipped.sigmf-meta",
+      .expected_detections = {
+          {.offset_hz = 150000.0, .tolerance_hz = 2000.0,
+           .required_label = std::string("narrowband")},
+          {.offset_hz = 450000.0, .tolerance_hz = 5000.0,
+           .required_label = std::string("narrowband")},
+      },
+  };
+
+  const ProcessingConfig processing = [] {
+    ProcessingConfig config;
+    config.fft_size = 4096;
+    config.display_samples = 4096;
+    return config;
+  }();
+
+  const std::array<FixtureExpectation, 6> fixtures{
+      single_tone, multi_tone, burst, weak, wideband, clipped};
+
+  for (const auto &fixture : fixtures) {
+    const auto snapshot =
+        ReplayFixture(fixture, processing, center_frequency_hz, sample_rate_hz);
+    Require(!snapshot.analysis.detections.empty(),
+            "Fixture " + fixture.name + " should produce detections.");
+    for (const auto &expected : fixture.expected_detections) {
+      RequireDetectionMatches(snapshot, center_frequency_hz, fixture, expected);
+    }
+    if (fixture.required_label) {
+      bool found_label = false;
+      for (const auto &detection : snapshot.analysis.detections) {
+        if (std::find(detection.labels.begin(), detection.labels.end(),
+                      *fixture.required_label) != detection.labels.end()) {
+          found_label = true;
+          break;
+        }
+      }
+      Require(found_label, "Fixture " + fixture.name +
+                               " should include label " + *fixture.required_label +
+                               ".");
+    }
+    if (fixture.minimum_peak_minus_noise_db) {
+      const double margin =
+          snapshot.analysis.strongest_peak_dbfs - snapshot.analysis.noise_floor_dbfs;
+      Require(margin >= *fixture.minimum_peak_minus_noise_db,
+              "Fixture " + fixture.name + " should stand above the noise floor.");
+    }
+    if (fixture.minimum_bandwidth_hz || fixture.maximum_bandwidth_hz) {
+      bool matched_bandwidth = false;
+      for (const auto &detection : snapshot.analysis.detections) {
+        if (fixture.minimum_bandwidth_hz &&
+            detection.bandwidth_hz < *fixture.minimum_bandwidth_hz) {
+          continue;
+        }
+        if (fixture.maximum_bandwidth_hz &&
+            detection.bandwidth_hz > *fixture.maximum_bandwidth_hz) {
+          continue;
+        }
+        matched_bandwidth = true;
+        break;
+      }
+      Require(matched_bandwidth,
+              "Fixture " + fixture.name + " should match its bandwidth range.");
+    }
+    if (fixture.minimum_detection_span_hz) {
+      double min_frequency = snapshot.analysis.detections.front().center_frequency_hz;
+      double max_frequency = min_frequency;
+      for (const auto &detection : snapshot.analysis.detections) {
+        min_frequency = std::min(min_frequency, detection.center_frequency_hz);
+        max_frequency = std::max(max_frequency, detection.center_frequency_hz);
+      }
+      Require(max_frequency - min_frequency >= *fixture.minimum_detection_span_hz,
+              "Fixture " + fixture.name + " should span a wide frequency range.");
+    }
+  }
+}
+
+void TestCliRejectsInvalidArguments() {
+  const auto temp_root =
+      std::filesystem::temp_directory_path() / "sdr_analyzer_cli_validation";
+  std::filesystem::create_directories(temp_root);
+  const auto output_path = temp_root / "cli-output.txt";
+
+  const std::string command =
+      kCliBinary.string() + " --sample-rate nope --frames 1 > \"" +
+      output_path.string() + "\" 2>&1";
+  const int result = std::system(command.c_str());
+  Require(result != 0, "CLI should fail on an invalid sample-rate value.");
+
+  std::ifstream stream(output_path);
+  std::ostringstream buffer;
+  buffer << stream.rdbuf();
+  const std::string output = buffer.str();
+  Require(output.find("Invalid value for --sample-rate") != std::string::npos,
+          "CLI should report an actionable parse error.");
 }
 
 void TestRecordingReplay(const RecordingFormat format,
@@ -284,10 +529,42 @@ void TestMalformedReplayDataFailsGracefully() {
   std::filesystem::remove_all(temp_root);
 }
 
+void TestCorruptedMetadataFailsFast() {
+  const auto temp_root = std::filesystem::temp_directory_path() /
+                         "sdr_analyzer_corrupted_metadata_test";
+  std::filesystem::create_directories(temp_root);
+  const auto data_path = (temp_root / "corrupt.sigmf-data").string();
+  const auto meta_path = (temp_root / "corrupt.sigmf-meta").string();
+
+  WriteTruncatedFloatCapture(data_path);
+  {
+    std::ofstream meta(meta_path);
+    meta << "{ \"global\": { \"core:datatype\": 17 } }";
+  }
+
+  sdr_analyzer::SourceConfig source;
+  source.kind = SourceKind::kReplay;
+  source.input_path = data_path;
+  source.metadata_path = meta_path;
+
+  ProcessingConfig processing;
+  processing.fft_size = 1024;
+
+  AnalyzerSession session(source, processing);
+  Require(!session.start(),
+          "Corrupted replay metadata should fail at startup.");
+  Require(Contains(session.last_error(), "Metadata file"),
+          "Expected a metadata parse error.");
+
+  std::filesystem::remove_all(temp_root);
+}
+
 } // namespace
 
 int main() {
   try {
+    TestSignalFixtures();
+    TestCliRejectsInvalidArguments();
     TestRecordingReplay(RecordingFormat::kRawBin, "raw");
     TestRecordingReplay(RecordingFormat::kSigMF, "sigmf");
     TestMetadataFailurePaths();
@@ -295,6 +572,7 @@ int main() {
     TestExplicitMissingMetadataFailsFast();
     TestMissingSigmfMetadataFailsFast();
     TestMalformedReplayDataFailsGracefully();
+    TestCorruptedMetadataFailsFast();
   } catch (const std::exception &ex) {
     std::cerr << ex.what() << "\n";
     return 1;

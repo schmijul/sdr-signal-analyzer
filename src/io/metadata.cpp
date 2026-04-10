@@ -31,6 +31,42 @@ std::optional<std::string> ExtractString(const std::string &content,
   return match[1].str();
 }
 
+bool RequireNumber(const std::string &content, const std::string &key,
+                   double &target, std::string &error) {
+  const auto value = ExtractNumber(content, key);
+  if (!value) {
+    error = "Metadata file is missing required numeric field: " + key;
+    return false;
+  }
+  target = *value;
+  return true;
+}
+
+bool RequireSize(const std::string &content, const std::string &key,
+                 std::size_t &target, std::string &error) {
+  double numeric = 0.0;
+  if (!RequireNumber(content, key, numeric, error)) {
+    return false;
+  }
+  if (numeric <= 0.0) {
+    error = "Metadata file has invalid numeric field: " + key;
+    return false;
+  }
+  target = static_cast<std::size_t>(numeric);
+  return true;
+}
+
+bool RequireString(const std::string &content, const std::string &key,
+                   std::string &target, std::string &error) {
+  const auto value = ExtractString(content, key);
+  if (!value) {
+    error = "Metadata file is missing required string field: " + key;
+    return false;
+  }
+  target = *value;
+  return true;
+}
+
 bool ReadFile(const std::string &path, std::string &content,
               std::string &error) {
   std::ifstream file(path);
@@ -113,24 +149,32 @@ bool ReadRawMetadata(const std::string &path, SourceConfig &source_config,
   if (!ReadFile(path, content, error)) {
     return false;
   }
-  if (const auto value = ExtractNumber(content, "sample_rate_hz")) {
-    source_config.sample_rate_hz = *value;
+  if (!RequireNumber(content, "sample_rate_hz", source_config.sample_rate_hz,
+                     error)) {
+    return false;
   }
-  if (const auto value = ExtractNumber(content, "center_frequency_hz")) {
-    source_config.center_frequency_hz = *value;
+  if (!RequireNumber(content, "center_frequency_hz",
+                     source_config.center_frequency_hz, error)) {
+    return false;
+  }
+  if (!RequireSize(content, "frame_samples", source_config.frame_samples,
+                   error)) {
+    return false;
   }
   if (const auto value = ExtractNumber(content, "gain_db")) {
     source_config.gain_db = *value;
   }
-  if (const auto value = ExtractNumber(content, "frame_samples")) {
-    source_config.frame_samples = static_cast<std::size_t>(*value);
+  std::string sample_format_text;
+  if (!RequireString(content, "sample_format", sample_format_text, error)) {
+    return false;
   }
-  if (const auto value = ExtractString(content, "sample_format")) {
-    const auto format = SampleFormatFromString(*value);
-    if (format) {
-      source_config.sample_format = *format;
-    }
+  const auto format = SampleFormatFromString(sample_format_text);
+  if (!format) {
+    error = "Metadata file has unsupported sample_format: " +
+            sample_format_text;
+    return false;
   }
+  source_config.sample_format = *format;
   return true;
 }
 
@@ -164,21 +208,27 @@ bool ReadSigmfMetadata(const std::string &path, SourceConfig &source_config,
   if (!ReadFile(path, content, error)) {
     return false;
   }
-  if (const auto value = ExtractNumber(content, "core:sample_rate")) {
-    source_config.sample_rate_hz = *value;
+  if (!RequireNumber(content, "core:sample_rate", source_config.sample_rate_hz,
+                     error)) {
+    return false;
   }
-  if (const auto value = ExtractNumber(content, "core:frequency")) {
-    source_config.center_frequency_hz = *value;
+  if (!RequireNumber(content, "core:frequency",
+                     source_config.center_frequency_hz, error)) {
+    return false;
   }
   if (const auto value = ExtractNumber(content, "sdr_analyzer:gain_db")) {
     source_config.gain_db = *value;
   }
-  if (const auto value = ExtractString(content, "core:datatype")) {
-    const auto format = SampleFormatFromString(*value);
-    if (format) {
-      source_config.sample_format = *format;
-    }
+  std::string datatype;
+  if (!RequireString(content, "core:datatype", datatype, error)) {
+    return false;
   }
+  const auto format = SampleFormatFromString(datatype);
+  if (!format) {
+    error = "SigMF metadata has unsupported core:datatype: " + datatype;
+    return false;
+  }
+  source_config.sample_format = *format;
   return true;
 }
 

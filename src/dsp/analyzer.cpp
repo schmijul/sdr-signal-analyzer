@@ -69,6 +69,10 @@ std::vector<std::string> ClassifySignal(const double sample_rate_hz,
   const double occupied_ratio =
       sample_rate_hz > 0.0 ? bandwidth_hz / sample_rate_hz : 0.0;
 
+  if (burst_score >= 3.5) {
+    labels.emplace_back("burst-like");
+  }
+
   if (occupied_ratio >= 0.12) {
     labels.emplace_back("broadband");
   } else if (occupied_ratio <= 0.02) {
@@ -78,10 +82,6 @@ std::vector<std::string> ClassifySignal(const double sample_rate_hz,
   if (occupied_ratio >= 0.05 && occupied_ratio <= 0.18 &&
       (peak_power_dbfs - noise_floor_dbfs) >= 18.0) {
     labels.emplace_back("likely FM");
-  }
-
-  if (burst_score >= 4.0) {
-    labels.emplace_back("burst-like");
   }
 
   if (labels.empty()) {

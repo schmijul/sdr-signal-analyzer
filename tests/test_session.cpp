@@ -55,6 +55,22 @@ void TestStartStopSmoke() {
   Require(!session.is_running(), "Session should stop cleanly.");
 }
 
+void TestInvalidSimulatorConfigFailsFast() {
+  SourceConfig source;
+  source.kind = SourceKind::kSimulator;
+  source.sample_rate_hz = 0.0;
+
+  ProcessingConfig processing;
+  processing.fft_size = 1024;
+
+  AnalyzerSession session(source, processing);
+  Require(!session.start(),
+          "Simulator session should reject zero sample rate.");
+  Require(session.last_error().find("Sample rate must be positive.") !=
+              std::string::npos,
+          "Expected a sample-rate validation error.");
+}
+
 void TestSourceUpdateIsFastAndEventuallyApplied() {
   SourceConfig source;
   source.kind = SourceKind::kSimulator;
@@ -90,6 +106,40 @@ void TestSourceUpdateIsFastAndEventuallyApplied() {
 
   session.stop();
   Require(!session.is_running(), "Session should stop after config updates.");
+}
+
+void TestInvalidRuntimeReconfigureStopsSession() {
+  SourceConfig source;
+  source.kind = SourceKind::kSimulator;
+  source.frame_samples = 1024;
+
+  ProcessingConfig processing;
+  processing.fft_size = 1024;
+  processing.display_samples = 1024;
+
+  AnalyzerSession session(source, processing);
+  Require(session.start(), "Simulator session failed to start.");
+  WaitForSnapshot(session, [](const AnalyzerSnapshot &) { return true; });
+
+  SourceConfig updated = session.source_config();
+  updated.sample_rate_hz = 0.0;
+
+  Require(session.update_source_config(updated),
+          "update_source_config should accept new values for revalidation.");
+
+  const auto deadline =
+      std::chrono::steady_clock::now() + std::chrono::seconds(2);
+  while (session.is_running() && std::chrono::steady_clock::now() < deadline) {
+    session.poll_snapshot();
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+  }
+
+  Require(!session.is_running(),
+          "Session should stop after invalid reconfigure is applied.");
+  Require(session.last_error().find("Sample rate must be positive.") !=
+              std::string::npos,
+          "Expected runtime reconfigure failure to report sample-rate error.");
+  session.stop();
 }
 
 void TestReplayEofStopsSessionAndAllowsRestart() {
@@ -129,8 +179,10 @@ void TestReplayEofStopsSessionAndAllowsRestart() {
 
 int main() {
   try {
+    TestInvalidSimulatorConfigFailsFast();
     TestStartStopSmoke();
     TestSourceUpdateIsFastAndEventuallyApplied();
+    TestInvalidRuntimeReconfigureStopsSession();
     TestReplayEofStopsSessionAndAllowsRestart();
   } catch (const std::exception &ex) {
     std::cerr << ex.what() << "\n";

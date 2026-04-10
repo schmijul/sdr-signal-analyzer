@@ -47,7 +47,8 @@ std::vector<std::uint8_t> BuildToneIq8(const std::size_t sample_count) {
 
 class MockRtlTcpServer {
 public:
-  MockRtlTcpServer() = default;
+  explicit MockRtlTcpServer(const bool send_payload = true)
+      : send_payload_(send_payload) {}
   ~MockRtlTcpServer() { Stop(); }
 
   int Start() {
@@ -123,6 +124,13 @@ private:
       command_bytes += static_cast<std::size_t>(received);
     }
 
+    if (!send_payload_) {
+      ::shutdown(client_fd_, SHUT_RDWR);
+      ::close(client_fd_);
+      client_fd_ = -1;
+      return;
+    }
+
     const auto payload = BuildToneIq8(4096);
     while (running_) {
       const auto sent = ::send(client_fd_, payload.data(), payload.size(), 0);
@@ -138,6 +146,7 @@ private:
   int port_ = 0;
   std::atomic<bool> running_ = false;
   std::thread thread_;
+  bool send_payload_ = true;
 };
 
 void TestRtlTcpSession() {
@@ -178,11 +187,67 @@ void TestRtlTcpSession() {
   Require(got_snapshot, "Did not receive a snapshot from rtl_tcp source.");
 }
 
+void TestRtlTcpStartupFailureIsActionable() {
+  SourceConfig source;
+  source.kind = SourceKind::kRtlTcp;
+  source.network_host = "does-not-exist.invalid";
+  source.network_port = 1234;
+
+  ProcessingConfig processing;
+  processing.fft_size = 2048;
+
+  AnalyzerSession session(source, processing);
+  Require(!session.start(),
+          "rtl_tcp session should fail with an invalid host.");
+  Require(session.last_error().find("Failed to resolve rtl_tcp host") !=
+              std::string::npos,
+          "Expected a host-resolution error message.");
+}
+
+void TestRtlTcpDisconnectIsReported() {
+  MockRtlTcpServer server(false);
+  const int port = server.Start();
+
+  SourceConfig source;
+  source.kind = SourceKind::kRtlTcp;
+  source.network_host = "127.0.0.1";
+  source.network_port = port;
+  source.frame_samples = 4096;
+  source.sample_rate_hz = 2.4e6;
+  source.center_frequency_hz = 433.92e6;
+  source.gain_db = 12.5;
+
+  ProcessingConfig processing;
+  processing.fft_size = 2048;
+
+  AnalyzerSession session(source, processing);
+  Require(session.start(),
+          "rtl_tcp session failed to start: " + session.last_error());
+
+  const auto deadline =
+      std::chrono::steady_clock::now() + std::chrono::seconds(2);
+  while (session.is_running() && std::chrono::steady_clock::now() < deadline) {
+    session.poll_snapshot();
+    std::this_thread::sleep_for(std::chrono::milliseconds(25));
+  }
+
+  Require(!session.is_running(),
+          "rtl_tcp session should stop after the server disconnects.");
+  Require(session.last_error().find("closed the connection") !=
+              std::string::npos ||
+          session.last_error().find("Failed to read rtl_tcp samples") !=
+              std::string::npos,
+          "Expected a disconnect or read-failure error.");
+  session.stop();
+}
+
 } // namespace
 
 int main() {
   try {
+    TestRtlTcpStartupFailureIsActionable();
     TestRtlTcpSession();
+    TestRtlTcpDisconnectIsReported();
   } catch (const std::exception &ex) {
     std::cerr << ex.what() << "\n";
     return 1;

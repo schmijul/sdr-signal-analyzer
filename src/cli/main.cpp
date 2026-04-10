@@ -1,6 +1,9 @@
 #include <chrono>
 #include <cstring>
+#include <exception>
 #include <iostream>
+#include <limits>
+#include <stdexcept>
 #include <thread>
 
 #include "sdr_analyzer/session.hpp"
@@ -50,6 +53,52 @@ RecordingFormat ParseRecordingFormat(const std::string &value) {
   return value == "sigmf" ? RecordingFormat::kSigMF : RecordingFormat::kRawBin;
 }
 
+double ParseDoubleOption(const char *name, const std::string &value) {
+  std::size_t consumed = 0;
+  try {
+    const double parsed = std::stod(value, &consumed);
+    if (consumed != value.size()) {
+      throw std::invalid_argument("trailing characters");
+    }
+    return parsed;
+  } catch (const std::exception &) {
+    throw std::runtime_error(std::string("Invalid value for ") + name + ": " +
+                             value);
+  }
+}
+
+std::size_t ParseSizeOption(const char *name, const std::string &value) {
+  std::size_t consumed = 0;
+  try {
+    const unsigned long long parsed = std::stoull(value, &consumed);
+    if (consumed != value.size()) {
+      throw std::invalid_argument("trailing characters");
+    }
+    return static_cast<std::size_t>(parsed);
+  } catch (const std::exception &) {
+    throw std::runtime_error(std::string("Invalid value for ") + name + ": " +
+                             value);
+  }
+}
+
+int ParseIntOption(const char *name, const std::string &value) {
+  std::size_t consumed = 0;
+  try {
+    const long long parsed = std::stoll(value, &consumed);
+    if (consumed != value.size()) {
+      throw std::invalid_argument("trailing characters");
+    }
+    if (parsed < std::numeric_limits<int>::min() ||
+        parsed > std::numeric_limits<int>::max()) {
+      throw std::out_of_range("value out of range");
+    }
+    return static_cast<int>(parsed);
+  } catch (const std::exception &) {
+    throw std::runtime_error(std::string("Invalid value for ") + name + ": " +
+                             value);
+  }
+}
+
 } // namespace
 
 int main(int argc, char **argv) {
@@ -82,30 +131,35 @@ int main(int argc, char **argv) {
       } else if (arg == "--host") {
         source_config.network_host = next_value("--host");
       } else if (arg == "--port") {
-        source_config.network_port = std::stoi(next_value("--port"));
+        source_config.network_port =
+            ParseIntOption("--port", next_value("--port"));
       } else if (arg == "--channel") {
         source_config.channel =
-            static_cast<std::size_t>(std::stoull(next_value("--channel")));
+            ParseSizeOption("--channel", next_value("--channel"));
       } else if (arg == "--antenna") {
         source_config.antenna = next_value("--antenna");
       } else if (arg == "--bandwidth-hz") {
-        source_config.bandwidth_hz = std::stod(next_value("--bandwidth-hz"));
+        source_config.bandwidth_hz =
+            ParseDoubleOption("--bandwidth-hz", next_value("--bandwidth-hz"));
       } else if (arg == "--clock-source") {
         source_config.clock_source = next_value("--clock-source");
       } else if (arg == "--time-source") {
         source_config.time_source = next_value("--time-source");
       } else if (arg == "--center-hz") {
-        source_config.center_frequency_hz = std::stod(next_value("--center-hz"));
+        source_config.center_frequency_hz =
+            ParseDoubleOption("--center-hz", next_value("--center-hz"));
       } else if (arg == "--sample-rate") {
-        source_config.sample_rate_hz = std::stod(next_value("--sample-rate"));
+        source_config.sample_rate_hz =
+            ParseDoubleOption("--sample-rate", next_value("--sample-rate"));
       } else if (arg == "--gain-db") {
-        source_config.gain_db = std::stod(next_value("--gain-db"));
+        source_config.gain_db =
+            ParseDoubleOption("--gain-db", next_value("--gain-db"));
       } else if (arg == "--fft-size") {
         processing_config.fft_size =
-            static_cast<std::size_t>(std::stoull(next_value("--fft-size")));
+            ParseSizeOption("--fft-size", next_value("--fft-size"));
         processing_config.display_samples = processing_config.fft_size;
       } else if (arg == "--frames") {
-        max_frames = std::stoi(next_value("--frames"));
+        max_frames = ParseIntOption("--frames", next_value("--frames"));
       } else if (arg == "--record-base") {
         recording_config.base_path = next_value("--record-base");
         enable_recording = true;
