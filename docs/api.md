@@ -63,7 +63,7 @@ Semantics:
 - `fft_size` sets the FFT frame size and therefore the displayed bin resolution
 - `display_samples` controls the time-domain preview only
 - the current implementation uses a Hann window before the FFT
-- detection thresholds are heuristic and intended for triage rather than calibrated classification
+- detection thresholds are empirical heuristics intended for triage and UI filtering rather than calibrated classification
 
 ### `RecordingConfig`
 
@@ -117,6 +117,39 @@ Lifecycle note:
 - `update_source_config(...)` updates the desired source settings immediately and the worker applies them on a later read cycle
 - after EOF or a source failure, `last_error()` preserves the stop reason and `start()` may be called again to create a fresh worker
 
+Minimal C++ example:
+
+```cpp
+#include <chrono>
+#include <thread>
+
+#include "sdr_analyzer/session.hpp"
+
+int main() {
+  sdr_analyzer::SourceConfig source;
+  source.kind = sdr_analyzer::SourceKind::kSimulator;
+
+  sdr_analyzer::ProcessingConfig processing;
+  processing.fft_size = 2048;
+
+  sdr_analyzer::AnalyzerSession session(source, processing);
+  if (!session.start()) {
+    return 1;
+  }
+
+  for (int attempt = 0; attempt < 50; ++attempt) {
+    if (auto snapshot = session.poll_snapshot()) {
+      (void)snapshot;
+      break;
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(20));
+  }
+
+  session.stop();
+  return 0;
+}
+```
+
 ## Result Types
 
 ### `AnalyzerSnapshot`
@@ -153,6 +186,8 @@ Container returned by `poll_snapshot()`:
 
 `noise_floor_dbfs` and `burst_score` are heuristic analysis outputs. They support ranking and UI explanations, not formal calibration.
 
+The DSP thresholds behind these values are intentionally empirical. They are documented in the implementation as heuristic cuts, not as universal signal-identification rules.
+
 ### `DetectionResult`
 
 - `center_frequency_hz`
@@ -181,6 +216,59 @@ The Python bindings mirror the C++ API closely:
 - same snapshot/result objects
 
 The Python GUI is intentionally built on those bindings instead of reimplementing backend behavior.
+
+### `sdr_signal_analyzer.export`
+
+The Python package also exposes a thin export helper layer above the public snapshot API:
+- `JsonlMeasurementExporter`
+- `build_metadata_record(...)`
+- `build_frame_record(...)`
+- `write_jsonl_record(...)`
+- `export_jsonl(...)`
+
+The helper writes the same JSONL schema used by the CLI export path:
+- first record: metadata/header
+- later records: one frame record per exported snapshot
+
+Metadata records include:
+- `format_version`
+- `source_config`
+- `processing_config`
+- `export_started_at_utc`
+- `marker_definitions`
+
+Frame records include:
+- `timestamp_utc`
+- `elapsed_seconds`
+- `sequence`
+- `center_frequency_hz`
+- `sample_rate_hz`
+- `noise_floor_dbfs`
+- `strongest_peak_dbfs`
+- `burst_score`
+- `detection_count`
+- `detections`
+- `marker_measurements`
+
+Marker measurements in the export are frame-local values logged over time. The JSONL file is intended for analysis and reproducibility, not calibrated instrumentation.
+
+## CLI Surface
+
+The CLI now supports structured measurement export while polling snapshots:
+- `--export-jsonl PATH`
+- `--export-interval N`
+
+Example:
+
+```bash
+./build/sdr-analyzer-cli \
+  --source simulator \
+  --frames 20 \
+  --export-jsonl measurements.jsonl \
+  --export-interval 2
+```
+
+The CLI writes one metadata record first and then one frame record for each exported snapshot.
 
 ## Public Versus Internal
 

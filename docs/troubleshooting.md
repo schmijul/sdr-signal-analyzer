@@ -61,6 +61,8 @@ Check host, port, and server availability:
 
 If the session exits immediately, confirm that the remote server is running and that the chosen port matches the server configuration.
 
+If you are building on Windows, note that the built-in `rtl_tcp` backend is not available today because the implementation uses POSIX socket APIs.
+
 ### UHD
 
 Confirm the USB or network-connected device is visible to UHD and that the `--device-args` string matches the attached radio.

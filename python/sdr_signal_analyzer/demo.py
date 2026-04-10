@@ -72,6 +72,7 @@ def _configure_processing(args: argparse.Namespace) -> ProcessingConfig:
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Run the deterministic demo CLI and return an exit status."""
     parser = _build_parser()
     args = parser.parse_args(argv)
     if args.frames <= 0:

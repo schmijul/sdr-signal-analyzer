@@ -298,9 +298,10 @@ private:
 
 AnalyzerSession::AnalyzerSession(SourceConfig source_config,
                                  ProcessingConfig processing_config)
-    : impl_(new Impl(std::move(source_config), std::move(processing_config))) {}
+    : impl_(std::make_unique<Impl>(std::move(source_config),
+                                   std::move(processing_config))) {}
 
-AnalyzerSession::~AnalyzerSession() { delete impl_; }
+AnalyzerSession::~AnalyzerSession() = default;
 
 bool AnalyzerSession::start() { return impl_->Start(); }
 void AnalyzerSession::stop() { impl_->Stop(); }

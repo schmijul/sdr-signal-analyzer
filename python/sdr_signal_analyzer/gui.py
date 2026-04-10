@@ -14,6 +14,48 @@ except ImportError as exc:  # pragma: no cover - runtime guard
     ) from exc
 
 
+DEFAULT_WINDOW_TITLE = "SDR Signal Analyzer"
+DEFAULT_WINDOW_WIDTH = 1600
+DEFAULT_WINDOW_HEIGHT = 1050
+DEFAULT_CONTROL_SPACING = 10
+DEFAULT_PANEL_HEIGHT = 220
+DEFAULT_WATERFALL_HEIGHT = 240
+DEFAULT_WATERFALL_ROWS = 220
+DEFAULT_TIMER_INTERVAL_MS = 40
+DEFAULT_DISPLAY_SAMPLES = 2048
+DEFAULT_FFT_SIZE = 2048
+DEFAULT_SOURCE_CENTER_HZ = 100_000_000.0
+DEFAULT_SAMPLE_RATE_HZ = 2_400_000.0
+DEFAULT_GAIN_DB = 10.0
+DEFAULT_MARKER_CENTER_HZ = 100_000_000.0
+DEFAULT_MARKER_BANDWIDTH_HZ = 200_000.0
+DEFAULT_REPLAY_HOST = "127.0.0.1"
+DEFAULT_REPLAY_PORT = "1234"
+DEFAULT_CHANNEL = "0"
+DEFAULT_EMPTY_TEXT = ""
+DEFAULT_PLOT_Y_MIN = -140.0
+DEFAULT_PLOT_Y_MAX = 0.0
+DEFAULT_TIME_Y_MIN = -1.5
+DEFAULT_TIME_Y_MAX = 1.5
+DEFAULT_PLOT_MARGIN_LEFT = 80
+DEFAULT_PLOT_MARGIN_TOP = 32
+DEFAULT_PLOT_MARGIN_RIGHT = 18
+DEFAULT_PLOT_MARGIN_BOTTOM_WITH_LABELS = 30
+DEFAULT_PLOT_MARGIN_BOTTOM_WITHOUT_LABELS = 16
+DEFAULT_PLOT_Y_LABEL_WIDTH = 68
+DEFAULT_PLOT_NOISE_LABEL_WIDTH = 110
+DEFAULT_WATERFALL_MARGIN_LEFT = 80
+DEFAULT_WATERFALL_MARGIN_TOP = 32
+DEFAULT_WATERFALL_MARGIN_RIGHT = 18
+DEFAULT_WATERFALL_MARGIN_BOTTOM = 24
+DEFAULT_WATERFALL_COLOR_STEPS = 256
+DEFAULT_MAX_ANNOTATIONS = 8
+DEFAULT_MAX_DETECTION_ANNOTATIONS = 6
+DEFAULT_MAX_DETECTION_ROWS = 12
+DEFAULT_STATUS_DETECTIONS = 3
+DEFAULT_MARKER_BANDWIDTH_HZ = 200_000.0
+
+
 def _clamp(value: float, lower: float, upper: float) -> float:
     return max(lower, min(upper, value))
 
@@ -38,6 +80,8 @@ _STATUS_ERROR_STYLE = "color: #ff8a80; font-weight: 600;"
 
 
 class PlotCanvas(QtWidgets.QWidget):
+    """Reusable canvas for spectrum and time-domain traces."""
+
     def __init__(
         self,
         title: str,
@@ -49,7 +93,7 @@ class PlotCanvas(QtWidgets.QWidget):
         parent: QtWidgets.QWidget | None = None,
     ) -> None:
         super().__init__(parent)
-        self.setMinimumHeight(220)
+        self.setMinimumHeight(DEFAULT_PANEL_HEIGHT)
         self._title = title
         self._y_min = y_min
         self._y_max = y_max
@@ -89,10 +133,14 @@ class PlotCanvas(QtWidgets.QWidget):
         self.update()
 
     def _plot_rect(self) -> QtCore.QRect:
-        margin_left = 80
-        margin_top = 32
-        margin_right = 18
-        margin_bottom = 30 if self._show_x_labels else 16
+        margin_left = DEFAULT_PLOT_MARGIN_LEFT
+        margin_top = DEFAULT_PLOT_MARGIN_TOP
+        margin_right = DEFAULT_PLOT_MARGIN_RIGHT
+        margin_bottom = (
+            DEFAULT_PLOT_MARGIN_BOTTOM_WITH_LABELS
+            if self._show_x_labels
+            else DEFAULT_PLOT_MARGIN_BOTTOM_WITHOUT_LABELS
+        )
         return self.rect().adjusted(
             margin_left, margin_top, -margin_right, -margin_bottom
         )
@@ -131,7 +179,7 @@ class PlotCanvas(QtWidgets.QWidget):
             painter.drawText(
                 8,
                 y + 4,
-                68,
+                DEFAULT_PLOT_Y_LABEL_WIDTH,
                 16,
                 QtCore.Qt.AlignmentFlag.AlignRight,
                 _format_dbfs(value),
@@ -170,12 +218,14 @@ class PlotCanvas(QtWidgets.QWidget):
                 plot_rect.left(), int(noise_y), plot_rect.right(), int(noise_y)
             )
             painter.drawText(
-                plot_rect.right() - 110,
+                plot_rect.right() - DEFAULT_PLOT_NOISE_LABEL_WIDTH,
                 int(noise_y) - 4,
                 f"noise {_format_dbfs(self._noise_floor)}",
             )
 
-        for index, (position, label, color) in enumerate(self._annotations[:8]):
+        for index, (position, label, color) in enumerate(
+            self._annotations[:DEFAULT_MAX_ANNOTATIONS]
+        ):
             if position < x_min or position > x_max:
                 continue
             x = int(x_to_pixel(position))
@@ -231,15 +281,17 @@ class PlotCanvas(QtWidgets.QWidget):
 
 
 class WaterfallCanvas(QtWidgets.QWidget):
+    """Waterfall view with a fixed-size rolling row buffer."""
+
     def __init__(
-        self, rows: int = 220, parent: QtWidgets.QWidget | None = None
+        self, rows: int = DEFAULT_WATERFALL_ROWS, parent: QtWidgets.QWidget | None = None
     ) -> None:
         super().__init__(parent)
-        self.setMinimumHeight(240)
+        self.setMinimumHeight(DEFAULT_WATERFALL_HEIGHT)
         self._title = "Waterfall"
         self._rows = rows
-        self._min_dbfs = -140.0
-        self._max_dbfs = 0.0
+        self._min_dbfs = DEFAULT_PLOT_Y_MIN
+        self._max_dbfs = DEFAULT_PLOT_Y_MAX
         self._row_width = 0
         self._image = QtGui.QImage()
         self._palette = self._build_palette()
@@ -281,7 +333,12 @@ class WaterfallCanvas(QtWidgets.QWidget):
         painter.setRenderHint(QtGui.QPainter.RenderHint.SmoothPixmapTransform, True)
         painter.fillRect(self.rect(), QtGui.QColor("#0e1015"))
 
-        plot_rect = self.rect().adjusted(80, 32, -18, -24)
+        plot_rect = self.rect().adjusted(
+            DEFAULT_WATERFALL_MARGIN_LEFT,
+            DEFAULT_WATERFALL_MARGIN_TOP,
+            -DEFAULT_WATERFALL_MARGIN_RIGHT,
+            -DEFAULT_WATERFALL_MARGIN_BOTTOM,
+        )
         painter.setPen(QtGui.QPen(QtGui.QColor("#20252d"), 1))
         painter.drawRect(plot_rect)
         painter.setPen(QtGui.QColor("#f7f7f2"))
@@ -312,8 +369,8 @@ class WaterfallCanvas(QtWidgets.QWidget):
     @staticmethod
     def _build_palette() -> list[QtGui.QColor]:
         palette: list[QtGui.QColor] = []
-        for index in range(256):
-            t = index / 255.0
+        for index in range(DEFAULT_WATERFALL_COLOR_STEPS):
+            t = index / float(DEFAULT_WATERFALL_COLOR_STEPS - 1)
             if t < 0.25:
                 local = t / 0.25
                 r, g, b = 0.0, 0.0, 40.0 + 180.0 * local
@@ -335,6 +392,8 @@ class WaterfallCanvas(QtWidgets.QWidget):
 
 
 class DetectionTable(QtWidgets.QTableWidget):
+    """Tabular view of detections and their labels."""
+
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(0, 4, parent)
         self.setHorizontalHeaderLabels(["Frequency", "Bandwidth", "Power", "Labels"])
@@ -345,7 +404,7 @@ class DetectionTable(QtWidgets.QTableWidget):
         self.setSelectionBehavior(
             QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows
         )
-        self.setMaximumHeight(220)
+        self.setMaximumHeight(DEFAULT_PANEL_HEIGHT)
 
     def set_detections(self, detections: Sequence[object]) -> None:
         self.setRowCount(len(detections))
@@ -368,24 +427,38 @@ class DetectionTable(QtWidgets.QTableWidget):
 
 
 class MainWindow(QtWidgets.QMainWindow):
+    """Main Qt frontend for live inspection and control."""
+
     def __init__(self) -> None:
         super().__init__()
-        self.setWindowTitle("SDR Signal Analyzer")
+        self.setWindowTitle(DEFAULT_WINDOW_TITLE)
 
+        _source, processing = self._create_default_session_state()
+        self._create_controls(processing)
+        self._build_controls_layout()
+        self._create_visualization_widgets()
+        self._assemble_main_layout()
+        self._create_timer()
+        self._apply_palette()
+        self._configure_validators()
+        self._waterfall.set_fft_size(processing.fft_size)
+        self._refresh_source_controls()
+
+    def _create_default_session_state(self) -> tuple[SourceConfig, ProcessingConfig]:
         source = SourceConfig()
         source.kind = SourceKind.SIMULATOR
+
         processing = ProcessingConfig()
-        processing.display_samples = 2048
+        processing.fft_size = DEFAULT_FFT_SIZE
+        processing.display_samples = DEFAULT_DISPLAY_SAMPLES
+
         self._session = AnalyzerSession(source, processing)
-        self._markers: list[Marker] = [Marker()]
+        self._markers = [Marker()]
         self._markers[0].center_frequency_hz = source.center_frequency_hz
-        self._markers[0].bandwidth_hz = 200_000.0
+        self._markers[0].bandwidth_hz = DEFAULT_MARKER_BANDWIDTH_HZ
+        return source, processing
 
-        central = QtWidgets.QWidget()
-        layout = QtWidgets.QVBoxLayout(central)
-        layout.setSpacing(10)
-
-        controls = QtWidgets.QGridLayout()
+    def _create_controls(self, processing: ProcessingConfig) -> None:
         self._source_kind = QtWidgets.QComboBox()
         self._source_kind.addItem("Simulator", SourceKind.SIMULATOR)
         self._source_kind.addItem("Replay", SourceKind.REPLAY)
@@ -393,29 +466,32 @@ class MainWindow(QtWidgets.QMainWindow):
         self._source_kind.addItem("UHD", SourceKind.UHD)
         self._source_kind.addItem("SoapySDR", SourceKind.SOAPY)
         self._source_kind.currentIndexChanged.connect(self._refresh_source_controls)
-        self._center_edit = QtWidgets.QLineEdit("100000000")
-        self._rate_edit = QtWidgets.QLineEdit("2400000")
-        self._gain_edit = QtWidgets.QLineEdit("10")
+
+        self._center_edit = QtWidgets.QLineEdit(str(DEFAULT_SOURCE_CENTER_HZ))
+        self._rate_edit = QtWidgets.QLineEdit(str(DEFAULT_SAMPLE_RATE_HZ))
+        self._gain_edit = QtWidgets.QLineEdit(str(DEFAULT_GAIN_DB))
         self._fft_edit = QtWidgets.QLineEdit(str(processing.fft_size))
-        self._input_path_edit = QtWidgets.QLineEdit("")
-        self._metadata_path_edit = QtWidgets.QLineEdit("")
+        self._input_path_edit = QtWidgets.QLineEdit(DEFAULT_EMPTY_TEXT)
+        self._metadata_path_edit = QtWidgets.QLineEdit(DEFAULT_EMPTY_TEXT)
         self._loop_checkbox = QtWidgets.QCheckBox("Loop Replay")
-        self._host_edit = QtWidgets.QLineEdit("127.0.0.1")
-        self._port_edit = QtWidgets.QLineEdit("1234")
-        self._device_string_edit = QtWidgets.QLineEdit("")
-        self._device_args_edit = QtWidgets.QLineEdit("")
-        self._channel_edit = QtWidgets.QLineEdit("0")
-        self._antenna_edit = QtWidgets.QLineEdit("")
-        self._bandwidth_edit = QtWidgets.QLineEdit("")
-        self._clock_source_edit = QtWidgets.QLineEdit("")
-        self._time_source_edit = QtWidgets.QLineEdit("")
-        self._marker_center_edit = QtWidgets.QLineEdit("100000000")
-        self._marker_bw_edit = QtWidgets.QLineEdit("200000")
+        self._host_edit = QtWidgets.QLineEdit(DEFAULT_REPLAY_HOST)
+        self._port_edit = QtWidgets.QLineEdit(DEFAULT_REPLAY_PORT)
+        self._device_string_edit = QtWidgets.QLineEdit(DEFAULT_EMPTY_TEXT)
+        self._device_args_edit = QtWidgets.QLineEdit(DEFAULT_EMPTY_TEXT)
+        self._channel_edit = QtWidgets.QLineEdit(DEFAULT_CHANNEL)
+        self._antenna_edit = QtWidgets.QLineEdit(DEFAULT_EMPTY_TEXT)
+        self._bandwidth_edit = QtWidgets.QLineEdit(DEFAULT_EMPTY_TEXT)
+        self._clock_source_edit = QtWidgets.QLineEdit(DEFAULT_EMPTY_TEXT)
+        self._time_source_edit = QtWidgets.QLineEdit(DEFAULT_EMPTY_TEXT)
+        self._marker_center_edit = QtWidgets.QLineEdit(str(DEFAULT_MARKER_CENTER_HZ))
+        self._marker_bw_edit = QtWidgets.QLineEdit(str(DEFAULT_MARKER_BANDWIDTH_HZ))
         self._start_button = QtWidgets.QPushButton("Start")
         self._start_button.clicked.connect(self._toggle_stream)
         self._marker_button = QtWidgets.QPushButton("Update Marker")
         self._marker_button.clicked.connect(self._update_marker)
 
+    def _build_controls_layout(self) -> None:
+        controls = QtWidgets.QGridLayout()
         self._source_controls: list[
             tuple[QtWidgets.QLabel, QtWidgets.QWidget, set[SourceKind] | None]
         ] = []
@@ -439,7 +515,9 @@ class MainWindow(QtWidgets.QMainWindow):
         add_control(3, "Gain dB", self._gain_edit)
         add_control(4, "FFT Size", self._fft_edit)
         add_control(5, "Replay Input", self._input_path_edit, {SourceKind.REPLAY})
-        add_control(6, "Replay Metadata", self._metadata_path_edit, {SourceKind.REPLAY})
+        add_control(
+            6, "Replay Metadata", self._metadata_path_edit, {SourceKind.REPLAY}
+        )
         add_control(7, "rtl_tcp Host", self._host_edit, {SourceKind.RTL_TCP})
         add_control(8, "rtl_tcp Port", self._port_edit, {SourceKind.RTL_TCP})
         add_control(9, "Soapy Device", self._device_string_edit, {SourceKind.SOAPY})
@@ -467,19 +545,25 @@ class MainWindow(QtWidgets.QMainWindow):
 
         controls.addWidget(self._start_button, 4, 2, 1, 2)
         controls.addWidget(self._marker_button, 4, 4, 1, 2)
-        layout.addLayout(controls)
+        self._controls_layout = controls
 
+    def _create_visualization_widgets(self) -> None:
         self._spectrum_plot = PlotCanvas(
-            "Spectrum", -140.0, 0.0, show_x_labels=True, show_legend=True
+            "Spectrum", DEFAULT_PLOT_Y_MIN, DEFAULT_PLOT_Y_MAX, show_x_labels=True
         )
-        self._waterfall = WaterfallCanvas(rows=220)
+        self._waterfall = WaterfallCanvas(rows=DEFAULT_WATERFALL_ROWS)
         self._time_plot = PlotCanvas(
-            "Time Domain", -1.5, 1.5, show_x_labels=True, show_legend=True
+            "Time Domain", DEFAULT_TIME_Y_MIN, DEFAULT_TIME_Y_MAX, show_x_labels=True
         )
         self._detection_table = DetectionTable()
         self._status_label = QtWidgets.QLabel("Idle")
         self._status_label.setStyleSheet(_STATUS_STYLE)
 
+    def _assemble_main_layout(self) -> None:
+        central = QtWidgets.QWidget()
+        layout = QtWidgets.QVBoxLayout(central)
+        layout.setSpacing(DEFAULT_CONTROL_SPACING)
+        layout.addLayout(self._controls_layout)
         layout.addWidget(self._spectrum_plot, stretch=3)
         layout.addWidget(self._waterfall, stretch=3)
         layout.addWidget(self._time_plot, stretch=2)
@@ -487,14 +571,10 @@ class MainWindow(QtWidgets.QMainWindow):
         layout.addWidget(self._status_label)
         self.setCentralWidget(central)
 
+    def _create_timer(self) -> None:
         self._timer = QtCore.QTimer(self)
-        self._timer.setInterval(40)
+        self._timer.setInterval(DEFAULT_TIMER_INTERVAL_MS)
         self._timer.timeout.connect(self._poll_session)
-
-        self._apply_palette()
-        self._configure_validators()
-        self._waterfall.set_fft_size(processing.fft_size)
-        self._refresh_source_controls()
 
     def _apply_palette(self) -> None:
         self.setStyleSheet(
@@ -685,7 +765,7 @@ class MainWindow(QtWidgets.QMainWindow):
         )
         if not self._is_power_of_two(processing.fft_size):
             raise ValueError("FFT Size must be a power of two.")
-        processing.display_samples = min(processing.fft_size, 2048)
+        processing.display_samples = min(processing.fft_size, DEFAULT_DISPLAY_SAMPLES)
         return processing
 
     def _update_marker(self) -> None:
@@ -774,7 +854,7 @@ class MainWindow(QtWidgets.QMainWindow):
                     f"{detection.labels[0]} {_format_hz(detection.bandwidth_hz)}",
                     "#d08c60",
                 )
-                for detection in detections[:6]
+                for detection in detections[:DEFAULT_MAX_DETECTION_ANNOTATIONS]
             ]
             + [
                 (
@@ -797,10 +877,10 @@ class MainWindow(QtWidgets.QMainWindow):
             ],
         )
 
-        self._detection_table.set_detections(detections[:12])
+        self._detection_table.set_detections(detections[:DEFAULT_MAX_DETECTION_ROWS])
         labels = ", ".join(
             f"{det.labels[0]} @ {_format_hz(det.center_frequency_hz)} / {_format_hz(det.bandwidth_hz)}"
-            for det in detections[:3]
+            for det in detections[:DEFAULT_STATUS_DETECTIONS]
         )
         self._set_status(
             "Noise "
@@ -811,8 +891,9 @@ class MainWindow(QtWidgets.QMainWindow):
 
 
 def main() -> int:
+    """Launch the Qt frontend and return the Qt event-loop exit code."""
     app = QtWidgets.QApplication(sys.argv)
     window = MainWindow()
-    window.resize(1600, 1050)
+    window.resize(DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT)
     window.show()
     return app.exec()

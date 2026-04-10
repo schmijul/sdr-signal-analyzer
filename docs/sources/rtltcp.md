@@ -9,6 +9,7 @@ This path is implemented directly in the repo and is covered by a mock-server re
 Stability note:
 - the code path is verified
 - real hardware/network deployments still depend on the remote server implementation and transport quality
+- the current implementation uses POSIX sockets, so Windows builds do not provide this backend today
 
 ## CLI Example
 
@@ -43,6 +44,7 @@ The source:
 - sample format from `rtl_tcp` is IQ8, so it is lower fidelity than the replay and UHD float paths
 - gain handling depends on the remote server implementation
 - disconnects are treated as source failures and surfaced through `last_error()`
+- the transport is cleartext TCP without authentication, so use it only on trusted networks
 
 ## Common Failure Modes
 

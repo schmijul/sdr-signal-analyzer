@@ -11,6 +11,19 @@ namespace {
 
 constexpr double kMinDb = -140.0;
 constexpr double kEpsilon = 1e-12;
+constexpr double kBurstLabelThreshold = 3.5;
+constexpr double kBroadbandOccupiedRatio = 0.12;
+constexpr double kNarrowbandOccupiedRatio = 0.02;
+constexpr double kLikelyFmOccupiedRatioMin = 0.05;
+constexpr double kLikelyFmOccupiedRatioMax = 0.18;
+constexpr double kLikelyFmSnrDb = 18.0;
+constexpr double kNoiseFloorQuantile = 0.2;
+constexpr double kBurstActivitySigma = 1.0;
+constexpr double kBurstDutyCycleMax = 0.35;
+constexpr double kSmoothingKernelWidth = 3.0;
+constexpr std::size_t kMinPeakSpacingBins = 2;
+constexpr double kBandwidthRollOffDb = 26.0;
+constexpr std::size_t kDefaultFftSize = 2048;
 
 double ClampDb(const double value) {
   return std::isfinite(value) ? std::max(value, kMinDb) : kMinDb;
@@ -32,15 +45,7 @@ double Quantile(std::vector<double> values, const double fraction) {
   return values[position];
 }
 
-double Mean(const std::vector<double> &values) {
-  if (values.empty()) {
-    return 0.0;
-  }
-  const double sum = std::accumulate(values.begin(), values.end(), 0.0);
-  return sum / static_cast<double>(values.size());
-}
-
-double Mean(const std::vector<float> &values) {
+template <typename T> double Mean(const std::vector<T> &values) {
   if (values.empty()) {
     return 0.0;
   }
@@ -69,18 +74,24 @@ std::vector<std::string> ClassifySignal(const double sample_rate_hz,
   const double occupied_ratio =
       sample_rate_hz > 0.0 ? bandwidth_hz / sample_rate_hz : 0.0;
 
-  if (burst_score >= 3.5) {
+  // Empirical threshold for short, high-contrast bursts. It is a UI hint, not
+  // a calibrated classifier.
+  if (burst_score >= kBurstLabelThreshold) {
     labels.emplace_back("burst-like");
   }
 
-  if (occupied_ratio >= 0.12) {
+  // Occupied bandwidth is normalized against sample rate so the broad/narrow
+  // labels scale with the current capture bandwidth.
+  if (occupied_ratio >= kBroadbandOccupiedRatio) {
     labels.emplace_back("broadband");
-  } else if (occupied_ratio <= 0.02) {
+  } else if (occupied_ratio <= kNarrowbandOccupiedRatio) {
     labels.emplace_back("narrowband");
   }
 
-  if (occupied_ratio >= 0.05 && occupied_ratio <= 0.18 &&
-      (peak_power_dbfs - noise_floor_dbfs) >= 18.0) {
+  // "likely FM" is only a broadband-enough, high-SNR candidate filter.
+  if (occupied_ratio >= kLikelyFmOccupiedRatioMin &&
+      occupied_ratio <= kLikelyFmOccupiedRatioMax &&
+      (peak_power_dbfs - noise_floor_dbfs) >= kLikelyFmSnrDb) {
     labels.emplace_back("likely FM");
   }
 
@@ -139,7 +150,11 @@ Analyzer::Process(const std::uint64_t sequence,
     }
   }
 
-  const double noise_floor_dbfs = Quantile(current_power, 0.2);
+  // Use a low quantile instead of the minimum so isolated peaks do not drag the
+  // baseline upward, while still keeping the estimate more conservative than a
+  // median on busy frames.
+  const double noise_floor_dbfs =
+      Quantile(current_power, kNoiseFloorQuantile);
   const double strongest_peak_dbfs =
       *std::max_element(current_power.begin(), current_power.end());
 
@@ -171,7 +186,8 @@ Analyzer::Process(const std::uint64_t sequence,
   std::size_t burst_samples = 0;
   for (const float magnitude : snapshot.time_domain.magnitude) {
     max_magnitude = std::max(max_magnitude, magnitude);
-    if (magnitude > mean_magnitude + stddev_magnitude) {
+    // Treat samples above mean + 1 sigma as "active" for a coarse burst mask.
+    if (magnitude > mean_magnitude + (kBurstActivitySigma * stddev_magnitude)) {
       ++burst_samples;
     }
   }
@@ -181,7 +197,9 @@ Analyzer::Process(const std::uint64_t sequence,
           : static_cast<double>(burst_samples) /
                 static_cast<double>(snapshot.time_domain.magnitude.size());
   const double burst_score =
-      (mean_magnitude > 0.0 && duty_cycle < 0.35)
+      // Avoid labeling continuous carriers as bursts by only scoring frames
+      // where the active mask covers a limited fraction of the samples.
+      (mean_magnitude > 0.0 && duty_cycle < kBurstDutyCycleMax)
           ? static_cast<double>(max_magnitude) / (mean_magnitude + kEpsilon)
           : 0.0;
 
@@ -193,9 +211,11 @@ Analyzer::Process(const std::uint64_t sequence,
   for (std::size_t index = 0; index < current_power.size(); ++index) {
     const std::size_t left = index == 0 ? 0 : index - 1;
     const std::size_t right = std::min(index + 1, current_power.size() - 1);
+    // A small 3-point smoothing kernel reduces bin-to-bin jitter before local
+    // peak selection without erasing narrowband peaks entirely.
     smoothed_power[index] =
         (current_power[left] + current_power[index] + current_power[right]) /
-        3.0;
+        kSmoothingKernelWidth;
   }
 
   for (const auto &marker : markers) {
@@ -230,7 +250,10 @@ Analyzer::Process(const std::uint64_t sequence,
   }
 
   const std::size_t spacing =
-      std::max<std::size_t>(2, config_.minimum_peak_spacing_bins);
+      // Keep a minimum exclusion zone so one tone does not emit several nearby
+      // detections from adjacent FFT bins.
+      std::max<std::size_t>(kMinPeakSpacingBins,
+                            config_.minimum_peak_spacing_bins);
   for (std::size_t index = spacing; index + spacing < smoothed_power.size();
        ++index) {
     const double value = smoothed_power[index];
@@ -258,8 +281,12 @@ Analyzer::Process(const std::uint64_t sequence,
       continue;
     }
 
-    const double bandwidth_threshold = std::max(
-        noise_floor_dbfs + config_.bandwidth_threshold_db, value - 26.0);
+    // Use the stricter of the configured threshold and a -26 dB roll-off from
+    // the local peak so occupied bandwidth stays tied to the signal shoulder
+    // instead of expanding across the whole raised floor.
+    const double bandwidth_threshold =
+        std::max(noise_floor_dbfs + config_.bandwidth_threshold_db,
+                 value - kBandwidthRollOffDb);
     std::size_t left = index;
     std::size_t right = index;
     while (left > 0 && current_power[left] > bandwidth_threshold) {
@@ -300,7 +327,9 @@ Analyzer::Process(const std::uint64_t sequence,
 
 void Analyzer::EnsureState() {
   if (!IsPowerOfTwo(config_.fft_size)) {
-    config_.fft_size = 2048;
+    // Invalid FFT sizes fall back to the small default used throughout the UI
+    // and tests so sessions remain usable instead of failing hard.
+    config_.fft_size = kDefaultFftSize;
   }
   if (config_.display_samples == 0) {
     config_.display_samples = config_.fft_size;

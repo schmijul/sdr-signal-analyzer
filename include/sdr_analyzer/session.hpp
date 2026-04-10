@@ -1,5 +1,6 @@
 #pragma once
-
+	
+#include <memory>
 #include <optional>
 #include <string>
 #include <vector>
@@ -38,7 +39,7 @@ public:
 
 private:
   class Impl;
-  Impl *impl_;
+  std::unique_ptr<Impl> impl_;
 };
 
 } // namespace sdr_analyzer

@@ -131,9 +131,50 @@ if(SDR_ANALYZER_BUILD_PYTHON AND Python3_FOUND AND TARGET _sdr_signal_analyzer)
       ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_gui_validation.py
   )
   set_tests_properties(gui_validation PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 10)
+
+  add_test(
+    NAME screenshot_assets
+    COMMAND
+      ${CMAKE_COMMAND} -E env
+      QT_QPA_PLATFORM=offscreen
+      PYTHONPATH=${CMAKE_CURRENT_SOURCE_DIR}/python
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_screenshot_assets.py
+  )
+  set_tests_properties(screenshot_assets PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 90)
+
+  add_test(
+    NAME export_helper
+    COMMAND
+      ${CMAKE_COMMAND} -E env
+      PYTHONPATH=${CMAKE_CURRENT_SOURCE_DIR}/python
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_export_helper.py
+  )
+  set_tests_properties(export_helper PROPERTIES TIMEOUT 20)
+
+  add_test(
+    NAME python_docstrings
+    COMMAND
+      ${CMAKE_COMMAND} -E env
+      PYTHONPATH=${CMAKE_CURRENT_SOURCE_DIR}/python
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_python_docstrings.py
+  )
+  set_tests_properties(python_docstrings PROPERTIES TIMEOUT 20)
 endif()
 
 if(Python3_FOUND)
+  add_test(
+    NAME cli_export
+    COMMAND
+      ${CMAKE_COMMAND} -E env
+      SDR_ANALYZER_CLI=$<TARGET_FILE:sdr-analyzer-cli>
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_cli_export.py
+  )
+  set_tests_properties(cli_export PROPERTIES TIMEOUT 20)
+
   add_test(
     NAME demo
     COMMAND

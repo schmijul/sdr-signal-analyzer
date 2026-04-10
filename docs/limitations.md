@@ -22,6 +22,8 @@ Current labels are intentionally modest:
 
 These labels are useful for triage and UI filtering, but they are not validated classifiers. They should be read as descriptive hints, not as protocol identification or modulation certainty.
 
+The thresholds behind them are empirical and intentionally conservative. They are tuned for repeatable analyzer behavior, not for universal signal-recognition guarantees.
+
 Stable workflow reminder:
 1. simulator
 2. replay
@@ -39,6 +41,7 @@ The current pipeline can be misleading when:
 - the capture has strong DC/LO artifacts
 - the occupied bandwidth changes rapidly inside one FFT frame
 - `rtl_tcp` input is lossy or unstable at the network level
+- the built-in `rtl_tcp` transport is POSIX-only today and runs over cleartext TCP without authentication
 - the signal is broader than the current `fft_size` or narrower than the bin resolution
 
 In those cases the analyzer can still produce useful snapshots, but the results should be treated as approximate.

@@ -11,6 +11,9 @@
 namespace sdr_analyzer::io {
 namespace {
 
+// These helpers intentionally parse only the flat metadata shape emitted by
+// this project. They are not general-purpose JSON parsers and will not handle
+// arbitrary nesting or escaped-string edge cases from unrelated producers.
 std::optional<double> ExtractNumber(const std::string &content,
                                     const std::string &key) {
   const std::regex pattern("\"" + key + "\"\\s*:\\s*([-0-9.eE+]+)");

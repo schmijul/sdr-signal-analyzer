@@ -11,6 +11,10 @@
 
 It is a reusable analysis backend, not a demodulator, protocol decoder, or measurement-grade instrument.
 
+![Simulator-generated overview screenshot of the GUI. Not live RF validation.](docs/screenshots/overview.png)
+
+*The committed screenshots are simulator-generated documentation assets. They demonstrate the offscreen GUI layout and backend wiring, not live RF performance.*
+
 ## Who It Is For
 
 Use this project if you want:
@@ -35,6 +39,8 @@ Verified today:
 - `rtl_tcp` source coverage with a mock server
 - Qt GUI startup smoke in offscreen mode
 - native C++ regression tests for DSP, session lifecycle, and recording/replay
+
+`rtl_tcp` is the one backend with an explicit transport caveat: the built-in implementation uses POSIX sockets, is not authenticated, and is not encrypted. Treat it as a trusted-network workflow until a separate transport layer exists.
 
 ## What Is Experimental
 
@@ -85,7 +91,24 @@ Expected result:
 - frames print with `noise=` and `detections=`
 - no live SDR hardware is required
 
-### 4. Replay a committed fixture
+### 4. Log measurements as JSONL
+
+Log structured measurements over time as JSONL:
+
+```bash
+./build/sdr-analyzer-cli \
+  --source simulator \
+  --frames 20 \
+  --export-jsonl measurements.jsonl \
+  --export-interval 2
+```
+
+Expected result:
+- the first JSONL record contains source and processing metadata
+- later JSONL records contain frame-local detections and marker measurements
+- the export is useful for analysis and reproducibility, not calibrated instrumentation
+
+### 5. Replay a committed fixture
 
 ```bash
 ./build/sdr-analyzer-cli \
@@ -99,7 +122,7 @@ Expected result:
 - the session produces repeatable detections near `100.15 MHz`
 - replay exits cleanly at end of stream
 
-### 5. Connect to `rtl_tcp`
+### 6. Connect to `rtl_tcp`
 
 ```bash
 ./build/sdr-analyzer-cli \
@@ -115,6 +138,7 @@ Expected result:
 - the analyzer connects to the remote server
 - spectral movement follows the incoming stream
 - disconnects surface as actionable source errors
+- the current built-in `rtl_tcp` path is intended for POSIX-like systems and trusted networks
 
 ## Expected Outputs
 
@@ -124,6 +148,7 @@ Typical CLI output includes:
 - strongest peak estimate in `dBFS`
 - number of detections
 - per-detection center frequency, bandwidth, and heuristic label
+- optional JSONL export records for reproducible time-series analysis
 
 Typical GUI output includes:
 - spectrum

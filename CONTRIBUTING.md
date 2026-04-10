@@ -67,6 +67,8 @@ The default hooks cover:
 - `clang-format` for C, C++, and header files
 - basic whitespace, line-ending, and YAML validation hooks
 
+The repository root contains `.clang-format`, so local formatting should match the hook and CI output instead of relying on editor defaults.
+
 ## Optional SDR Backends
 
 The repository builds without UHD or SoapySDR.
