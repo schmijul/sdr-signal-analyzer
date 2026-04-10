@@ -120,7 +120,7 @@ add_test(
 )
 set_tests_properties(cli_replay_eof PROPERTIES TIMEOUT 5)
 
-if(SDR_ANALYZER_BUILD_PYTHON AND Python3_FOUND)
+if(SDR_ANALYZER_BUILD_PYTHON AND Python3_FOUND AND TARGET _sdr_signal_analyzer)
   add_test(
     NAME gui_validation
     COMMAND
