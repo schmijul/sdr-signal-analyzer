@@ -1,63 +1,88 @@
 # SDR Signal Analyzer
 
-C++-first SDR spectrum analyzer with a Python GUI on top. The backend owns device access, DSP, detection, recording, replay, and analysis so it can run headless through a CLI or be embedded into other frontends without dragging Python into the core. The GUI uses only PySide6 and custom Qt painting, not `pyqtgraph` or `numpy`.
+C++-first SDR spectrum analyzer with a Python GUI on top. The backend owns capture, FFT processing, detection, recording, replay, and analysis so it can run headless through a CLI or be embedded into other frontends without pulling Python into the core runtime.
+
+The current repo state is a publishable MVP:
+- real-time spectrum, waterfall, and time-domain views
+- automatic peak detection, bandwidth estimation, noise-floor estimation, and coarse signal labels
+- IQ recording and deterministic replay
+- built-in simulator, self-implemented `rtl_tcp` client, and optional SoapySDR support
+- self-rendered Qt GUI using only PySide6 on the frontend side
+
+## Screenshots
+
+Simulator-driven portfolio scenes generated from the checked-in codepath:
+
+![Overview UI](docs/screenshots/overview.png)
+
+![433 MHz style scene](docs/screenshots/ism_433.png)
+
+![Narrowband focus](docs/screenshots/narrowband_focus.png)
+
+You can regenerate these assets with [generate_portfolio_assets.py](scripts/generate_portfolio_assets.py) in an offscreen Qt session.
 
 ## Architecture
 
 - `include/sdr_analyzer/`: public C++ API
-- `src/core/`: session orchestration and streaming lifecycle
-- `src/sdr/`: live device and replay sources
-- `src/dsp/`: FFT, averaging, peak hold, peak detection, bandwidth/noise estimation, coarse classification
-- `src/io/`: `.bin` IQ recording, SigMF metadata, replay helpers
-- `src/cli/`: backend-only CLI
-- `python/sdr_signal_analyzer/`: `pybind11` bindings and optional PySide6 GUI
-- `examples/`: simulator-driven usage examples
+- `src/core/`: session lifecycle and dataflow orchestration
+- `src/sdr/`: simulator, replay, `rtl_tcp`, and optional SoapySDR sources
+- `src/dsp/`: FFT, averaging, peak hold, peak detection, bandwidth/noise estimation, classification
+- `src/io/`: raw `.bin` and SigMF metadata handling, recording, replay helpers
+- `src/cli/`: backend-only CLI for capture/replay/analysis
+- `python/sdr_signal_analyzer/`: `pybind11` bindings and PySide6 GUI
+- `tests/`: DSP, `rtl_tcp`, and record/replay regression coverage
 
-## MVP Features
+## What Is Implemented
 
-- Live spectrum view data from the backend
-- Waterfall-ready frame stream
-- Time-domain I/Q and magnitude samples
-- Frequency, sample-rate, gain, FFT-size, averaging, and peak-hold controls
-- Band markers and dBFS-oriented frame data
+- Live spectrum frame generation with dBFS scaling
+- Waterfall and time-domain rendering
+- Controls for center frequency, sample rate, gain, FFT size, averaging, and peak hold
+- Marker measurements with peak and average dBFS inside the marked span
 - Automatic peak detection
-- Bandwidth estimation
-- Noise-floor estimation
-- Coarse signal classification:
+- Occupied-bandwidth estimation
+- Robust noise-floor estimation
+- Coarse heuristic labels:
   - `likely FM`
   - `narrowband`
   - `broadband`
   - `burst-like`
 - IQ recording and replay:
-  - raw `.bin` + metadata sidecar
+  - raw `.bin` + JSON metadata sidecar
   - SigMF `.sigmf-data` + `.sigmf-meta`
 - Live source options:
   - built-in simulator
   - self-implemented `rtl_tcp` network backend
-  - optional SoapySDR backend when present at build time
+  - optional SoapySDR backend when available at build time
 
-## Build
+## Quickstart
 
-### C++ backend and CLI
+### Backend build
 
 ```bash
 cmake -S . -B build
 cmake --build build
-ctest --test-dir build
+ctest --test-dir build --output-on-failure
 ```
 
-### Python bindings and GUI
+### Python GUI
 
-If `pybind11` is available, the CMake build emits the extension into `python/sdr_signal_analyzer/`.
+Use a virtual environment on Linux systems with externally managed Python:
 
 ```bash
-python3 -m pip install -e .[gui]
-python3 -m sdr_signal_analyzer
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install PySide6 pybind11 scikit-build-core
+cmake -S . -B build
+cmake --build build
+PYTHONPATH=python python -m sdr_signal_analyzer
 ```
 
-The GUI dependency is optional. The backend and CLI still build without `PySide6`.
+### Fastest demo path
 
-The backend does not rely on NumPy, SciPy, or plotting toolkits. FFT, detection, bandwidth/noise estimation, recording, replay, and the `rtl_tcp` client are implemented in the repo itself. SoapySDR remains optional for broader hardware coverage, but it is no longer the only live-device path.
+```bash
+./build/sdr-analyzer-cli --source simulator --frames 20
+```
 
 ## CLI Examples
 
@@ -99,12 +124,18 @@ Replay a raw IQ dump:
   --loop
 ```
 
-## RF Portfolio Targets
+## Publish Notes
 
-This repo is meant to present RF understanding, not only plotting:
+This repo is careful about what it claims:
+- the screenshots above are deterministic simulator scenes, not over-the-air recordings
+- the DSP and transport path are implemented in this repo rather than delegated to NumPy, SciPy, or plotting libraries
+- SoapySDR is optional convenience for broader hardware support, not a hard dependency for live input
 
-- FM broadcast case study near 100 MHz
-- 433 MHz ISM activity capture and replay
-- narrowband signal example with estimated bandwidth
+What would still strengthen it further later:
+- real RF capture case studies with committed replay samples
+- CSV/PNG export workflows
+- scanning and demod preview features
 
-Once real captures are added, the README should include screenshots and reproducible replays for each case so the analysis output can be verified from stored IQ data.
+## Continuous Integration
+
+GitHub Actions builds the C++ targets, runs all current tests, and performs a Python binding smoke check on Ubuntu through [.github/workflows/ci.yml](.github/workflows/ci.yml).
