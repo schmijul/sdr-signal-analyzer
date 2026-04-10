@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+from math import isfinite
 from typing import Sequence
 
 from . import AnalyzerSession, Marker, ProcessingConfig, SourceConfig, SourceKind
@@ -30,6 +31,10 @@ def _format_hz(value: float) -> str:
 
 def _format_dbfs(value: float) -> str:
     return f"{value:.1f} dBFS"
+
+
+_STATUS_STYLE = "color: #d8dbe2; font-weight: 600;"
+_STATUS_ERROR_STYLE = "color: #ff8a80; font-weight: 600;"
 
 
 class PlotCanvas(QtWidgets.QWidget):
@@ -473,7 +478,7 @@ class MainWindow(QtWidgets.QMainWindow):
         )
         self._detection_table = DetectionTable()
         self._status_label = QtWidgets.QLabel("Idle")
-        self._status_label.setStyleSheet("color: #d8dbe2; font-weight: 600;")
+        self._status_label.setStyleSheet(_STATUS_STYLE)
 
         layout.addWidget(self._spectrum_plot, stretch=3)
         layout.addWidget(self._waterfall, stretch=3)
@@ -487,6 +492,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self._timer.timeout.connect(self._poll_session)
 
         self._apply_palette()
+        self._configure_validators()
         self._waterfall.set_fft_size(processing.fft_size)
         self._refresh_source_controls()
 
@@ -528,24 +534,185 @@ class MainWindow(QtWidgets.QMainWindow):
             visible = visible_for is None or current_kind in visible_for
             label.setVisible(visible)
             widget.setVisible(visible)
+            widget.setEnabled(visible)
 
     @staticmethod
-    def _parse_int(text: str, default: int = 0) -> int:
-        stripped = text.strip()
-        return int(stripped) if stripped else default
+    def _is_power_of_two(value: int) -> bool:
+        return value > 0 and (value & (value - 1)) == 0
 
     @staticmethod
-    def _parse_float(text: str, default: float = 0.0) -> float:
-        stripped = text.strip()
-        return float(stripped) if stripped else default
+    def _read_text(edit: QtWidgets.QLineEdit, label: str) -> str:
+        text = edit.text().strip()
+        if not text:
+            raise ValueError(f"{label} is required.")
+        return text
+
+    @staticmethod
+    def _read_int(
+        edit: QtWidgets.QLineEdit,
+        label: str,
+        *,
+        minimum: int | None = None,
+        maximum: int | None = None,
+    ) -> int:
+        text = edit.text().strip()
+        if not text:
+            raise ValueError(f"{label} is required.")
+        try:
+            value = int(text)
+        except ValueError as exc:
+            raise ValueError(f"{label} must be an integer.") from exc
+        if minimum is not None and value < minimum:
+            raise ValueError(f"{label} must be at least {minimum}.")
+        if maximum is not None and value > maximum:
+            raise ValueError(f"{label} must be at most {maximum}.")
+        return value
+
+    @staticmethod
+    def _read_float(
+        edit: QtWidgets.QLineEdit,
+        label: str,
+        *,
+        minimum: float | None = None,
+        maximum: float | None = None,
+        allow_empty: bool = False,
+        default: float = 0.0,
+    ) -> float:
+        text = edit.text().strip()
+        if not text:
+            if allow_empty:
+                return default
+            raise ValueError(f"{label} is required.")
+        try:
+            value = float(text)
+        except ValueError as exc:
+            raise ValueError(f"{label} must be a number.") from exc
+        if not isfinite(value):
+            raise ValueError(f"{label} must be finite.")
+        if minimum is not None and value < minimum:
+            raise ValueError(f"{label} must be at least {minimum}.")
+        if maximum is not None and value > maximum:
+            raise ValueError(f"{label} must be at most {maximum}.")
+        return value
+
+    def _configure_validators(self) -> None:
+        def positive_double() -> QtGui.QDoubleValidator:
+            validator = QtGui.QDoubleValidator(0.0, 1.0e12, 6, self)
+            validator.setNotation(
+                QtGui.QDoubleValidator.Notation.StandardNotation
+            )
+            return validator
+
+        def signed_double() -> QtGui.QDoubleValidator:
+            validator = QtGui.QDoubleValidator(-200.0, 200.0, 2, self)
+            validator.setNotation(
+                QtGui.QDoubleValidator.Notation.StandardNotation
+            )
+            return validator
+
+        self._center_edit.setValidator(positive_double())
+        self._rate_edit.setValidator(positive_double())
+        self._gain_edit.setValidator(signed_double())
+        self._fft_edit.setValidator(QtGui.QIntValidator(1, 2_147_483_647, self))
+        self._port_edit.setValidator(QtGui.QIntValidator(1, 65535, self))
+        self._channel_edit.setValidator(
+            QtGui.QIntValidator(0, 2_147_483_647, self)
+        )
+        self._marker_center_edit.setValidator(positive_double())
+        self._marker_bw_edit.setValidator(positive_double())
+        self._bandwidth_edit.setValidator(positive_double())
+
+    def _set_status(self, message: str, *, error: bool = False) -> None:
+        self._status_label.setStyleSheet(
+            _STATUS_ERROR_STYLE if error else _STATUS_STYLE
+        )
+        self._status_label.setText(message)
+
+    def _report_input_error(self, message: str) -> None:
+        self._set_status(f"Input error: {message}", error=True)
+
+    def _build_source_config(self) -> SourceConfig:
+        source = self._session.source_config()
+        source.kind = self._source_kind.currentData()
+        source.center_frequency_hz = self._read_float(
+            self._center_edit, "Center Hz", minimum=0.0, maximum=1.0e12
+        )
+        if source.center_frequency_hz <= 0.0:
+            raise ValueError("Center Hz must be greater than 0.")
+        source.sample_rate_hz = self._read_float(
+            self._rate_edit, "Sample Rate", minimum=0.0, maximum=1.0e12
+        )
+        if source.sample_rate_hz <= 0.0:
+            raise ValueError("Sample Rate must be greater than 0.")
+        source.gain_db = self._read_float(
+            self._gain_edit, "Gain dB", minimum=-200.0, maximum=200.0
+        )
+
+        if source.kind == SourceKind.REPLAY:
+            source.input_path = self._read_text(self._input_path_edit, "Replay Input")
+            source.metadata_path = self._metadata_path_edit.text().strip()
+            source.loop_playback = self._loop_checkbox.isChecked()
+        elif source.kind == SourceKind.RTL_TCP:
+            source.network_host = self._read_text(self._host_edit, "rtl_tcp Host")
+            source.network_port = self._read_int(
+                self._port_edit, "rtl_tcp Port", minimum=1, maximum=65535
+            )
+        elif source.kind in {SourceKind.UHD, SourceKind.SOAPY}:
+            source.channel = self._read_int(
+                self._channel_edit, "Channel", minimum=0
+            )
+            source.antenna = self._antenna_edit.text().strip()
+            source.bandwidth_hz = self._read_float(
+                self._bandwidth_edit,
+                "Bandwidth Hz",
+                minimum=0.0,
+                maximum=1.0e12,
+                allow_empty=True,
+                default=0.0,
+            )
+            if source.kind == SourceKind.UHD:
+                source.device_args = self._device_args_edit.text().strip()
+                source.clock_source = self._clock_source_edit.text().strip()
+                source.time_source = self._time_source_edit.text().strip()
+            else:
+                source.device_string = self._device_string_edit.text().strip()
+        return source
+
+    def _build_processing_config(self) -> ProcessingConfig:
+        processing = self._session.processing_config()
+        processing.fft_size = self._read_int(
+            self._fft_edit, "FFT Size", minimum=2
+        )
+        if not self._is_power_of_two(processing.fft_size):
+            raise ValueError("FFT Size must be a power of two.")
+        processing.display_samples = min(processing.fft_size, 2048)
+        return processing
 
     def _update_marker(self) -> None:
-        marker = Marker()
-        marker.center_frequency_hz = float(self._marker_center_edit.text())
-        marker.bandwidth_hz = float(self._marker_bw_edit.text())
+        try:
+            marker = Marker()
+            marker.center_frequency_hz = self._read_float(
+                self._marker_center_edit,
+                "Marker Hz",
+                minimum=0.0,
+                maximum=1.0e12,
+            )
+            if marker.center_frequency_hz <= 0.0:
+                raise ValueError("Marker Hz must be greater than 0.")
+            marker.bandwidth_hz = self._read_float(
+                self._marker_bw_edit,
+                "Marker BW",
+                minimum=0.0,
+                maximum=1.0e12,
+            )
+            if marker.bandwidth_hz <= 0.0:
+                raise ValueError("Marker BW must be greater than 0.")
+        except ValueError as exc:
+            self._report_input_error(str(exc))
+            return
         self._markers = [marker]
         self._session.set_markers(self._markers)
-        self._status_label.setText(
+        self._set_status(
             f"Marker set at {_format_hz(marker.center_frequency_hz)} with {_format_hz(marker.bandwidth_hz)} span"
         )
 
@@ -554,46 +721,31 @@ class MainWindow(QtWidgets.QMainWindow):
             self._session.stop()
             self._timer.stop()
             self._start_button.setText("Start")
-            self._status_label.setText("Stopped")
+            self._set_status("Stopped")
             return
 
-        source = self._session.source_config()
-        source.center_frequency_hz = float(self._center_edit.text())
-        source.sample_rate_hz = float(self._rate_edit.text())
-        source.gain_db = float(self._gain_edit.text())
-        source.kind = self._source_kind.currentData()
-        source.input_path = self._input_path_edit.text().strip()
-        source.metadata_path = self._metadata_path_edit.text().strip()
-        source.loop_playback = self._loop_checkbox.isChecked()
-        source.network_host = self._host_edit.text().strip()
-        source.network_port = self._parse_int(self._port_edit.text(), 1234)
-        source.device_string = self._device_string_edit.text().strip()
-        source.device_args = self._device_args_edit.text().strip()
-        source.channel = max(0, self._parse_int(self._channel_edit.text(), 0))
-        source.antenna = self._antenna_edit.text().strip()
-        source.bandwidth_hz = self._parse_float(self._bandwidth_edit.text(), 0.0)
-        source.clock_source = self._clock_source_edit.text().strip()
-        source.time_source = self._time_source_edit.text().strip()
+        try:
+            source = self._build_source_config()
+            processing = self._build_processing_config()
+        except ValueError as exc:
+            self._report_input_error(str(exc))
+            return
+
         if not self._session.update_source_config(source):
-            self._status_label.setText(
-                f"Source update failed: {self._session.last_error()}"
-            )
+            self._set_status(f"Source update failed: {self._session.last_error()}", error=True)
             return
 
-        processing = self._session.processing_config()
-        processing.fft_size = int(self._fft_edit.text())
-        processing.display_samples = min(processing.fft_size, 2048)
         self._session.update_processing_config(processing)
 
         self._waterfall.set_fft_size(processing.fft_size)
         self._session.set_markers(self._markers)
         if not self._session.start():
-            self._status_label.setText(f"Start failed: {self._session.last_error()}")
+            self._set_status(f"Start failed: {self._session.last_error()}", error=True)
             return
 
         self._timer.start()
         self._start_button.setText("Stop")
-        self._status_label.setText("Running")
+        self._set_status("Running")
 
     def _poll_session(self) -> None:
         snapshot = self._session.poll_snapshot()
@@ -650,7 +802,7 @@ class MainWindow(QtWidgets.QMainWindow):
             f"{det.labels[0]} @ {_format_hz(det.center_frequency_hz)} / {_format_hz(det.bandwidth_hz)}"
             for det in detections[:3]
         )
-        self._status_label.setText(
+        self._set_status(
             "Noise "
             f"{_format_dbfs(snapshot.analysis.noise_floor_dbfs)} | "
             f"Peak {_format_dbfs(snapshot.analysis.strongest_peak_dbfs)} | "

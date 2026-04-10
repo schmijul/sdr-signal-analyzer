@@ -7,7 +7,7 @@ This file explains what the current screenshots and fixtures prove.
 Important distinction:
 - the committed screenshots are simulator-generated unless stated otherwise
 - the committed replay fixtures are synthetic narrowband test captures
-- real over-the-air captures are still a future enhancement
+- these assets prove reproducibility and pipeline behavior, not calibrated RF truth
 
 ## Overview UI
 
@@ -38,7 +38,8 @@ What it proves:
 - the portfolio can present sub-GHz workflows in a reproducible way
 
 What it does not prove:
-- this is not yet a real over-the-air ISM capture
+- this is not a real over-the-air ISM capture
+- this does not validate the analyzer against live RF conditions
 
 ## Narrowband Fixture
 
@@ -57,7 +58,7 @@ What it shows:
 What it proves:
 - replay analysis is deterministic
 - raw and SigMF paths both support the same basic narrowband example
-- bandwidth estimation and marker measurement can be validated against a known synthetic signal
+- bandwidth estimation and marker measurement can be validated against a known synthetic signal, within the limits described in the trust page
 
 ## Regenerating Screenshots
 
@@ -80,4 +81,4 @@ QT_QPA_PLATFORM=offscreen .venv/bin/python scripts/generate_portfolio_assets.py 
 The next step up from the current docs set is real capture evidence:
 - FM broadcast recording with replay and expected bandwidth notes
 - real 433 MHz activity capture
-- one or more actual hardware screenshots from USRP or RTL-SDR sessions
+- one or more actual hardware screenshots from RTL-SDR and USRP sessions

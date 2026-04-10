@@ -52,6 +52,12 @@ Controls DSP behavior:
 - `minimum_peak_spacing_bins`
 - `bandwidth_threshold_db`
 
+Semantics:
+- `fft_size` sets the FFT frame size and therefore the displayed bin resolution
+- `display_samples` controls the time-domain preview only
+- the current implementation uses a Hann window before the FFT
+- detection thresholds are heuristic and intended for triage rather than calibrated classification
+
 ### `RecordingConfig`
 
 Controls recording behavior:
@@ -67,6 +73,8 @@ Formats:
 User-defined region for power measurement:
 - `center_frequency_hz`
 - `bandwidth_hz`
+
+Markers are evaluated against the current FFT snapshot, so the returned values are frame-local measurements, not long-running calibrated averages.
 
 ## Session Surface
 
@@ -95,6 +103,13 @@ Usage pattern:
 4. Optionally start/stop recording
 5. Call `stop()` when done
 
+Lifecycle note:
+- the session owns a worker thread while running
+- control methods are intended for the caller thread and are synchronized internally
+- `poll_snapshot()` returns bounded queued snapshots, so callers should drain it regularly
+- `update_source_config(...)` updates the desired source settings immediately and the worker applies them on a later read cycle
+- after EOF or a source failure, `last_error()` preserves the stop reason and `start()` may be called again to create a fresh worker
+
 ## Result Types
 
 ### `AnalyzerSnapshot`
@@ -113,6 +128,8 @@ Container returned by `poll_snapshot()`:
 - `average_dbfs`
 - `peak_hold_dbfs`
 
+`power_dbfs` and the derived frames are relative to the full-scale complex input representation used by the backend. They are useful for comparing captures inside the tool, but they are not absolute RF power.
+
 ### `TimeDomainFrame`
 
 - `i`
@@ -127,6 +144,8 @@ Container returned by `poll_snapshot()`:
 - `detections`
 - `marker_measurements`
 
+`noise_floor_dbfs` and `burst_score` are heuristic analysis outputs. They support ranking and UI explanations, not formal calibration.
+
 ### `DetectionResult`
 
 - `center_frequency_hz`
@@ -135,12 +154,16 @@ Container returned by `poll_snapshot()`:
 - `bandwidth_hz`
 - `labels`
 
+`labels` are descriptive heuristic labels such as `broadband`, `narrowband`, `likely FM`, and `burst-like`. They are not validated classifiers or protocol identifiers.
+
 ### `MarkerMeasurement`
 
 - `center_frequency_hz`
 - `bandwidth_hz`
 - `peak_power_dbfs`
 - `average_power_dbfs`
+
+These values are frame-local measurements inside the current spectrum snapshot.
 
 ## Python Surface
 

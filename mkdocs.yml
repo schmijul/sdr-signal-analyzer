@@ -23,6 +23,7 @@ nav:
   - Overview: index.md
   - Architecture: architecture.md
   - Public API: api.md
+  - Trust and Limits: limitations.md
   - Replay and Recording: replay-and-recording.md
   - Testing and Validation: testing.md
   - Source Guides:

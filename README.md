@@ -5,7 +5,7 @@
 [![PyPI](https://img.shields.io/pypi/v/sdr-signal-analyzer)](https://pypi.org/project/sdr-signal-analyzer/)
 [![Python Versions](https://img.shields.io/pypi/pyversions/sdr-signal-analyzer)](https://pypi.org/project/sdr-signal-analyzer/)
 
-C++-first SDR spectrum analyzer with a Python GUI, deterministic replay tooling, and optional live-device integrations. The backend owns capture, FFT processing, detection, recording, replay, and analysis so it can run headless from a CLI, power a Qt desktop UI, or be embedded into other frontends without pulling Python into the core runtime.
+C++-first SDR spectrum analyzer with a Python GUI, deterministic replay tooling, and optional live-device integrations. The backend owns capture, FFT processing, detection, recording, replay, and analysis so it can run headless from a CLI, power a Qt desktop UI, or be embedded into other frontends without pulling Python into the core runtime. It is a reusable analysis backend, not a demodulator or protocol decoder.
 
 ![Overview screenshot](https://raw.githubusercontent.com/schmijul/sdr-signal-analyzer/main/docs/screenshots/overview.png)
 
@@ -15,12 +15,28 @@ C++-first SDR spectrum analyzer with a Python GUI, deterministic replay tooling,
 
 That gives you:
 - real-time spectrum, waterfall, and time-domain views
-- automatic peak detection, bandwidth estimation, noise-floor estimation, and coarse labels
+- heuristic peak detection, bandwidth estimation, noise-floor estimation, and heuristic labels
 - raw `.bin` and SigMF recording plus deterministic replay
 - a built-in simulator for screenshots, demos, and regression tests
 - a built-in `rtl_tcp` client for RTL-SDR style remote streams
 - optional native UHD/USRP and SoapySDR backends when those SDKs are available
 - backend regression tests plus Python and GUI smoke coverage in CI
+
+## Current Maturity
+
+This repository is intended to be a serious alpha/beta package, not a research-grade analyzer.
+
+Current trust level:
+- deterministic replay and simulator coverage in CI
+- lifecycle and input-validation regressions for the public session and GUI paths
+- heuristic analysis outputs that are documented as approximate
+- limited in-repo real hardware evidence today; stronger RTL-SDR and USRP evidence is still being assembled
+
+Non-goals for the current release line:
+- absolute RF power calibration
+- demodulation or protocol decoding
+- validated modulation classification
+- compliance or metrology use
 
 ## Hardware And Backend Support
 
@@ -175,6 +191,7 @@ Releases are intended to follow:
 - [Architecture](https://github.com/schmijul/sdr-signal-analyzer/blob/main/docs/architecture.md)
 - [Public API](https://github.com/schmijul/sdr-signal-analyzer/blob/main/docs/api.md)
 - [Replay and recording](https://github.com/schmijul/sdr-signal-analyzer/blob/main/docs/replay-and-recording.md)
+- [Trust and limits](https://github.com/schmijul/sdr-signal-analyzer/blob/main/docs/limitations.md)
 - [Source guides](https://github.com/schmijul/sdr-signal-analyzer/blob/main/docs/sources/index.md)
 - [Testing and validation](https://github.com/schmijul/sdr-signal-analyzer/blob/main/docs/testing.md)
 - [Case studies and screenshots](https://github.com/schmijul/sdr-signal-analyzer/blob/main/docs/case-studies.md)

@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cmath>
 #include <complex>
 #include <iostream>
@@ -49,6 +50,16 @@ GenerateBurstTone(const std::size_t sample_count, const double sample_rate_hz,
   return samples;
 }
 
+std::vector<std::complex<float>> GenerateSilence(const std::size_t sample_count) {
+  return std::vector<std::complex<float>>(sample_count);
+}
+
+const sdr_analyzer::DetectionResult &
+StrongestDetection(const sdr_analyzer::AnalyzerSnapshot &snapshot) {
+  Require(!snapshot.analysis.detections.empty(), "Expected a detection.");
+  return snapshot.analysis.detections.front();
+}
+
 void TestPeakDetection() {
   ProcessingConfig config;
   config.fft_size = 2048;
@@ -70,6 +81,44 @@ void TestPeakDetection() {
     }
   }
   Require(matched_frequency, "Tone center frequency estimate is off.");
+}
+
+void TestFrequencyAccuracyAcrossOffsets() {
+  ProcessingConfig config;
+  config.fft_size = 4096;
+  Analyzer lower_offset_analyzer(config);
+  Analyzer upper_offset_analyzer(config);
+
+  const auto lower_offset = lower_offset_analyzer.Process(
+      10, 144e6, 2.4e6, GenerateTone(4096, 2.4e6, 125000.0, 0.9f), {});
+  const auto upper_offset = upper_offset_analyzer.Process(
+      11, 144e6, 2.4e6, GenerateTone(4096, 2.4e6, 325000.0, 0.9f), {});
+
+  Require(std::abs(StrongestDetection(lower_offset).center_frequency_hz - 144125000.0) <
+              1500.0,
+          "Lower-offset tone frequency estimate drifted too far.");
+  Require(std::abs(StrongestDetection(upper_offset).center_frequency_hz - 144325000.0) <
+              1500.0,
+          "Upper-offset tone frequency estimate drifted too far.");
+}
+
+void TestToneBandwidthAndNoiseMargin() {
+  ProcessingConfig config;
+  config.fft_size = 2048;
+  Analyzer analyzer(config);
+
+  const auto snapshot = analyzer.Process(
+      12, 100e6, 2.4e6, GenerateTone(2048, 2.4e6, 150000.0, 0.85f), {});
+  const auto &detection = StrongestDetection(snapshot);
+  const double bin_resolution = snapshot.spectrum.bin_resolution_hz;
+
+  Require(detection.bandwidth_hz >= bin_resolution,
+          "Narrowband tone bandwidth must cover at least one FFT bin.");
+  Require(detection.bandwidth_hz <= bin_resolution * 8.0,
+          "Pure tone bandwidth estimate should remain narrow.");
+  Require(snapshot.analysis.strongest_peak_dbfs - snapshot.analysis.noise_floor_dbfs >
+              25.0,
+          "Tone should stand clearly above the estimated noise floor.");
 }
 
 void TestBurstClassification() {
@@ -124,13 +173,40 @@ void TestMarkerMeasurement() {
           "Expected a strong in-band marker reading.");
 }
 
+void TestPeakHoldPreservesRecentPeak() {
+  ProcessingConfig config;
+  config.fft_size = 2048;
+  config.peak_hold_enabled = true;
+  Analyzer analyzer(config);
+
+  const auto active = analyzer.Process(
+      20, 100e6, 2.4e6, GenerateTone(2048, 2.4e6, 250000.0, 0.9f), {});
+  const auto quiet =
+      analyzer.Process(21, 100e6, 2.4e6, GenerateSilence(2048), {});
+
+  const double peak_hold_max =
+      *std::max_element(quiet.spectrum.peak_hold_dbfs.begin(),
+                        quiet.spectrum.peak_hold_dbfs.end());
+  const double live_power_max =
+      *std::max_element(quiet.spectrum.power_dbfs.begin(),
+                        quiet.spectrum.power_dbfs.end());
+
+  Require(peak_hold_max >= active.analysis.strongest_peak_dbfs - 0.5,
+          "Peak hold should preserve the recent strong tone.");
+  Require(live_power_max < -100.0,
+          "Silence frame should not retain a strong live-spectrum peak.");
+}
+
 } // namespace
 
 int main() {
   try {
     TestPeakDetection();
+    TestFrequencyAccuracyAcrossOffsets();
+    TestToneBandwidthAndNoiseMargin();
     TestBurstClassification();
     TestMarkerMeasurement();
+    TestPeakHoldPreservesRecentPeak();
   } catch (const std::exception &ex) {
     std::cerr << ex.what() << "\n";
     return 1;

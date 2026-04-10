@@ -4,11 +4,13 @@
 - a C++ core for source access, DSP, detection, recording, and replay
 - Python bindings via `pybind11`
 - a Qt GUI that consumes the same session API as the CLI
+- heuristic detection and labeling on top of FFT-based spectrum analysis
 
 ## Start Here
 
 - [Architecture](architecture.md) for system layout and data flow
 - [Public API](api.md) for the session/config/result model
+- [Trust and Limits](limitations.md) for dBFS semantics, heuristic labels, and failure modes
 - [Replay and Recording](replay-and-recording.md) for deterministic capture workflows
 - [Testing and Validation](testing.md) for regression coverage and hardware checklists
 - [Source Guides](sources/index.md) for backend-specific notes

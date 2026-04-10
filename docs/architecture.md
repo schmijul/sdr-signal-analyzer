@@ -69,6 +69,18 @@ This is why replay, simulator, `rtl_tcp`, UHD, and Soapy all share the same down
 - GUI code only polls snapshots on the UI thread
 - `stop()` joins the worker thread even when the source stops itself due to EOF or failure
 
+Current lock strategy:
+- the main session mutex protects desired config, marker state, lifecycle flags, and the bounded snapshot queue
+- recorder writes are isolated behind a recorder mutex
+- DSP analyzer state updates are isolated behind an analysis mutex
+- blocking sample reads and FFT processing happen outside the main session mutex
+
+Practical consequences:
+- `poll_snapshot()` and `update_source_config()` no longer wait behind `ReadSamples()` or FFT work
+- source config updates are staged on the caller thread and applied by the worker before a later read cycle
+- EOF or source failure stops the worker, records `last_error()`, and allows a later `start()` to create a fresh worker cleanly
+- `stop()` waits for the current read/process cycle to finish before the source is torn down, which keeps source ownership single-threaded
+
 ## Backend/Frontend Separation
 
 The frontend does not own:

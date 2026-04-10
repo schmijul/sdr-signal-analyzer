@@ -103,3 +103,32 @@ add_executable(test_record_replay tests/test_record_replay.cpp)
 target_link_libraries(test_record_replay PRIVATE sdr_analyzer Threads::Threads)
 target_include_directories(test_record_replay PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 add_test(NAME record_replay COMMAND test_record_replay)
+
+add_executable(test_session tests/test_session.cpp)
+target_link_libraries(test_session PRIVATE sdr_analyzer Threads::Threads)
+target_include_directories(test_session PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+add_test(NAME session COMMAND test_session)
+
+add_test(
+  NAME cli_replay_eof
+  COMMAND
+    sdr-analyzer-cli
+    --source replay
+    --input ${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/tone_cf32.sigmf-data
+    --meta ${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/tone_cf32.sigmf-meta
+    --frames 2
+)
+set_tests_properties(cli_replay_eof PROPERTIES TIMEOUT 5)
+
+if(SDR_ANALYZER_BUILD_PYTHON AND Python3_FOUND)
+  add_test(
+    NAME gui_validation
+    COMMAND
+      ${CMAKE_COMMAND} -E env
+      QT_QPA_PLATFORM=offscreen
+      PYTHONPATH=${CMAKE_CURRENT_SOURCE_DIR}/python
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_gui_validation.py
+  )
+  set_tests_properties(gui_validation PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 10)
+endif()

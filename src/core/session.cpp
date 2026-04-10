@@ -1,6 +1,5 @@
 #include "sdr_analyzer/session.hpp"
 
-#include <atomic>
 #include <chrono>
 #include <deque>
 #include <memory>
@@ -27,24 +26,39 @@ public:
   ~Impl() { Stop(); }
 
   bool Start() {
+    {
+      std::scoped_lock lock(mutex_);
+      if (running_) {
+        return true;
+      }
+    }
+
+    if (worker_.joinable()) {
+      worker_.join();
+    }
+
     std::scoped_lock lock(mutex_);
     if (running_) {
       return true;
     }
 
+    snapshots_.clear();
+    last_error_.clear();
+
     std::string error;
-    source_ = sdr::CreateSource(source_config_, error);
-    if (!source_) {
+    auto source = sdr::CreateSource(source_config_, error);
+    if (!source) {
       last_error_ = error;
       return false;
     }
-    if (!source_->Configure(source_config_, error) || !source_->Start(error)) {
+    if (!source->Configure(source_config_, error) || !source->Start(error)) {
       last_error_ = error;
-      source_.reset();
       return false;
     }
 
+    source_ = std::move(source);
     running_ = true;
+    source_config_dirty_ = false;
     worker_ = std::thread([this]() { Run(); });
     return true;
   }
@@ -53,21 +67,25 @@ public:
     bool should_join = false;
     {
       std::scoped_lock lock(mutex_);
+      running_ = false;
       should_join = worker_.joinable();
-      if (running_) {
-        running_ = false;
-      }
     }
 
     if (should_join) {
       worker_.join();
     }
 
-    std::scoped_lock lock(mutex_);
-    if (source_) {
-      source_->Stop();
-      source_.reset();
+    std::unique_ptr<sdr::ISampleSource> source_to_stop;
+    {
+      std::scoped_lock lock(mutex_);
+      source_to_stop = std::move(source_);
+      source_config_dirty_ = false;
     }
+    if (source_to_stop) {
+      source_to_stop->Stop();
+    }
+
+    std::scoped_lock recorder_lock(recorder_mutex_);
     recorder_.Stop();
   }
 
@@ -77,12 +95,18 @@ public:
   }
 
   SessionStatus Status() const {
-    std::scoped_lock lock(mutex_);
     SessionStatus status;
-    status.running = running_;
-    status.source_description = source_ ? source_->Description() : "stopped";
-    if (recorder_.active()) {
-      status.recording = recorder_.status();
+    {
+      std::scoped_lock lock(mutex_);
+      status.running = running_;
+      status.source_description =
+          running_ && source_ ? source_->Description() : "stopped";
+    }
+    {
+      std::scoped_lock recorder_lock(recorder_mutex_);
+      if (recorder_.active()) {
+        status.recording = recorder_.status();
+      }
     }
     return status;
   }
@@ -90,26 +114,30 @@ public:
   bool UpdateSourceConfig(const SourceConfig &config) {
     std::scoped_lock lock(mutex_);
     source_config_ = config;
-    if (source_) {
-      std::string error;
-      if (!source_->Configure(source_config_, error)) {
-        last_error_ = error;
-        return false;
-      }
-    }
+    source_config_dirty_ = source_ != nullptr;
     return true;
   }
 
   void UpdateProcessingConfig(const ProcessingConfig &config) {
-    std::scoped_lock lock(mutex_);
-    processing_config_ = config;
+    {
+      std::scoped_lock lock(mutex_);
+      processing_config_ = config;
+    }
+    std::scoped_lock analysis_lock(analysis_mutex_);
     analyzer_.UpdateConfig(config);
   }
 
   bool StartRecording(const RecordingConfig &config) {
-    std::scoped_lock lock(mutex_);
+    SourceConfig source_config_copy;
+    {
+      std::scoped_lock lock(mutex_);
+      source_config_copy = source_config_;
+    }
+
+    std::scoped_lock recorder_lock(recorder_mutex_);
     std::string error;
-    if (!recorder_.Start(config, source_config_, error)) {
+    if (!recorder_.Start(config, source_config_copy, error)) {
+      std::scoped_lock lock(mutex_);
       last_error_ = error;
       return false;
     }
@@ -117,7 +145,7 @@ public:
   }
 
   void StopRecording() {
-    std::scoped_lock lock(mutex_);
+    std::scoped_lock recorder_lock(recorder_mutex_);
     recorder_.Stop();
   }
 
@@ -159,37 +187,79 @@ private:
     while (true) {
       SourceConfig source_config_copy;
       std::vector<Marker> markers_copy;
+      sdr::ISampleSource *source = nullptr;
+      bool needs_reconfigure = false;
+      {
+        std::scoped_lock lock(mutex_);
+        if (!running_ || !source_) {
+          break;
+        }
+        source = source_.get();
+        source_config_copy = source_config_;
+        markers_copy = markers_;
+        needs_reconfigure = source_config_dirty_;
+      }
+
+      if (needs_reconfigure) {
+        std::string config_error;
+        if (!source->Configure(source_config_copy, config_error)) {
+          std::scoped_lock lock(mutex_);
+          last_error_ = config_error;
+          running_ = false;
+          break;
+        }
+        std::scoped_lock lock(mutex_);
+        if (source_ && source_.get() == source) {
+          source_config_dirty_ = false;
+        }
+      }
+
+      {
+        std::scoped_lock lock(mutex_);
+        if (!running_ || !source_ || source_.get() != source) {
+          break;
+        }
+      }
+
+      std::string error;
+      const std::size_t samples_read = source->ReadSamples(
+          iq_samples, source_config_copy.frame_samples, error);
+      if (samples_read == 0) {
+        std::scoped_lock lock(mutex_);
+        if (!running_) {
+          break;
+        }
+        last_error_ = error.empty() ? "Source returned no samples." : error;
+        running_ = false;
+        break;
+      }
+
+      {
+        std::scoped_lock recorder_lock(recorder_mutex_);
+        if (recorder_.active()) {
+          std::string record_error;
+          if (!recorder_.Write(iq_samples, record_error)) {
+            std::scoped_lock lock(mutex_);
+            last_error_ = record_error;
+            recorder_.Stop();
+          }
+        }
+      }
+
+      AnalyzerSnapshot snapshot;
+      {
+        std::scoped_lock analysis_lock(analysis_mutex_);
+        snapshot =
+            analyzer_.Process(sequence++, source_config_copy.center_frequency_hz,
+                              source_config_copy.sample_rate_hz, iq_samples,
+                              markers_copy);
+      }
+
       {
         std::scoped_lock lock(mutex_);
         if (!running_) {
           break;
         }
-        source_config_copy = source_config_;
-        markers_copy = markers_;
-        std::string error;
-        if (!source_) {
-          break;
-        }
-
-        const std::size_t samples_read = source_->ReadSamples(
-            iq_samples, source_config_copy.frame_samples, error);
-        if (samples_read == 0) {
-          last_error_ = error.empty() ? "Source returned no samples." : error;
-          running_ = false;
-          break;
-        }
-
-        if (recorder_.active()) {
-          std::string record_error;
-          if (!recorder_.Write(iq_samples, record_error)) {
-            last_error_ = record_error;
-            recorder_.Stop();
-          }
-        }
-        auto snapshot = analyzer_.Process(
-            sequence++, source_config_copy.center_frequency_hz,
-            source_config_copy.sample_rate_hz, iq_samples, markers_copy);
-
         snapshots_.push_back(std::move(snapshot));
         while (snapshots_.size() > kMaxSnapshots) {
           snapshots_.pop_front();
@@ -199,12 +269,20 @@ private:
       std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
 
-    if (source_) {
-      source_->Stop();
+    std::unique_ptr<sdr::ISampleSource> source_to_stop;
+    {
+      std::scoped_lock lock(mutex_);
+      source_to_stop = std::move(source_);
+      source_config_dirty_ = false;
+    }
+    if (source_to_stop) {
+      source_to_stop->Stop();
     }
   }
 
   mutable std::mutex mutex_;
+  mutable std::mutex recorder_mutex_;
+  mutable std::mutex analysis_mutex_;
   SourceConfig source_config_;
   dsp::Analyzer analyzer_;
   ProcessingConfig processing_config_;
@@ -214,6 +292,7 @@ private:
   std::thread worker_;
   std::vector<Marker> markers_;
   bool running_ = false;
+  bool source_config_dirty_ = false;
   std::string last_error_;
 };
 

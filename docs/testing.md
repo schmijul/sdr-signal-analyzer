@@ -2,14 +2,24 @@
 
 ## Automated Coverage
 
-The current automated suite covers three layers:
+The current automated suite covers five layers:
 
 ### DSP Regression
 
 `tests/test_pipeline.cpp`
 - tone detection
-- burst-like classification
+- frequency accuracy across multiple offsets
+- narrowband bandwidth sanity
+- peak-hold behavior after a strong transient
+- burst-like heuristic labeling
 - marker measurement behavior
+
+### Session Lifecycle Regression
+
+`tests/test_session.cpp`
+- simulator start/stop smoke
+- non-blocking source config updates while running
+- replay EOF shutdown and session restart behavior
 
 ### Source / Transport Regression
 
@@ -27,6 +37,16 @@ The current automated suite covers three layers:
 - committed fixture replay
 - missing metadata failure paths
 - malformed replay data handling
+
+### GUI Validation Regression
+
+`tests/test_gui_validation.py`
+- invalid center frequency input
+- invalid FFT size input
+- missing replay path validation
+- invalid marker update validation
+
+When `PySide6` is missing, the GUI validation test is skipped explicitly instead of failing the whole suite.
 
 ## Local Commands
 
@@ -60,10 +80,21 @@ GitHub Actions currently verifies:
 - configure/build on Ubuntu
 - no-hardware build path with UHD and Soapy disabled explicitly
 - full CTest run
+- replay CLI EOF behavior
 - Python binding smoke
 - offscreen GUI smoke
 
 CI is intentionally hardware-free.
+
+## Lightweight Performance Check
+
+For a quick local throughput sanity check, measure the simulator path rather than treating CI as a benchmark:
+
+```bash
+time ./build/sdr-analyzer-cli --source simulator --frames 200 >/tmp/sdr_cli_bench.txt
+```
+
+This is not a published performance guarantee. It is a local regression check for obviously degraded frame throughput or shutdown behavior.
 
 ## Manual Hardware Validation
 
@@ -94,5 +125,6 @@ The project prefers:
 - deterministic simulator and replay coverage in CI
 - hardware checklists for real radio validation
 - fixtures for repeatability
+- heuristic outputs that are checked against controlled expectations, not treated as ground truth
 
 This keeps the repo portable while still supporting serious hardware-oriented workflows.
