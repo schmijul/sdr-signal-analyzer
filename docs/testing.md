@@ -2,9 +2,11 @@
 
 ## Automated Coverage
 
-The current automated suite covers five layers:
+The test suite is split into critical and non-critical paths so the release bar stays honest.
 
-### DSP Regression
+### Critical Paths
+
+These paths are expected to stay stable and are covered by automated tests:
 
 `tests/test_pipeline.cpp`
 - tone detection
@@ -14,22 +16,16 @@ The current automated suite covers five layers:
 - burst-like heuristic labeling
 - marker measurement behavior
 
-### Session Lifecycle Regression
-
 `tests/test_session.cpp`
 - simulator start/stop smoke
 - non-blocking source config updates while running
 - replay EOF shutdown and session restart behavior
-
-### Source / Transport Regression
 
 `tests/test_rtltcp.cpp`
 - mock `rtl_tcp` server
 - source startup
 - command exchange
 - snapshot production
-
-### Recording / Replay Regression
 
 `tests/test_record_replay.cpp`
 - raw record -> replay consistency
@@ -38,8 +34,6 @@ The current automated suite covers five layers:
 - missing metadata failure paths
 - malformed replay data handling
 
-### GUI Validation Regression
-
 `tests/test_gui_validation.py`
 - invalid center frequency input
 - invalid FFT size input
@@ -47,6 +41,15 @@ The current automated suite covers five layers:
 - invalid marker update validation
 
 When `PySide6` is missing, the GUI validation test is skipped explicitly instead of failing the whole suite.
+
+### Non-Critical Paths
+
+These paths matter for usability, but they are not treated as hard correctness gates:
+
+- Qt painting and pixel-perfect rendering
+- live hardware backends beyond startup and basic transport validation
+- benchmark numbers
+- screenshot aesthetics
 
 ## Local Commands
 
@@ -74,27 +77,34 @@ window._session.stop()
 PY
 ```
 
+Python coverage and benchmark helpers:
+
+```bash
+python3 scripts/python_coverage.py --output-dir quality-artifacts/python-coverage
+python3 scripts/benchmark_ci.py --cli ./build/sdr-analyzer-cli
+```
+
+Expected outputs:
+
+- `quality-artifacts/python-coverage/html/index.html`
+- `quality-artifacts/python-coverage/coverage.xml`
+- `quality-artifacts/benchmark/benchmark.json`
+- `quality-artifacts/benchmark/benchmark.md`
+
 ## CI Coverage
 
-GitHub Actions currently verifies:
-- configure/build on Ubuntu
-- no-hardware build path with UHD and Soapy disabled explicitly
-- full CTest run
-- replay CLI EOF behavior
-- Python binding smoke
-- offscreen GUI smoke
+The `quality.yml` workflow is intended to publish two kinds of evidence:
+
+- C++ coverage from `gcovr`
+- Python coverage from `coverage.py`
+
+The workflow uploads HTML and XML artifacts so regressions are inspectable without reproducing the run locally.
 
 CI is intentionally hardware-free.
 
-## Lightweight Performance Check
+## Benchmark Output
 
-For a quick local throughput sanity check, measure the simulator path rather than treating CI as a benchmark:
-
-```bash
-time ./build/sdr-analyzer-cli --source simulator --frames 200 >/tmp/sdr_cli_bench.txt
-```
-
-This is not a published performance guarantee. It is a local regression check for obviously degraded frame throughput or shutdown behavior.
+Benchmark runs are informational and should be compared only across the same runner class and build mode. See [Benchmarking](benchmarking.md) for the recorded fields and local invocation.
 
 ## Manual Hardware Validation
 
@@ -122,6 +132,7 @@ Automated tests do not replace real-device validation. For a serious release can
 ## Test Philosophy
 
 The project prefers:
+
 - deterministic simulator and replay coverage in CI
 - hardware checklists for real radio validation
 - fixtures for repeatability

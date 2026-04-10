@@ -26,6 +26,7 @@ nav:
   - Trust and Limits: limitations.md
   - Replay and Recording: replay-and-recording.md
   - Testing and Validation: testing.md
+  - Benchmarking: benchmarking.md
   - Source Guides:
       - Overview: sources/index.md
       - rtl_tcp: sources/rtltcp.md
