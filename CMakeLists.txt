@@ -74,3 +74,8 @@ add_executable(test_rtltcp tests/test_rtltcp.cpp)
 target_link_libraries(test_rtltcp PRIVATE sdr_analyzer Threads::Threads)
 target_include_directories(test_rtltcp PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 add_test(NAME rtltcp COMMAND test_rtltcp)
+
+add_executable(test_record_replay tests/test_record_replay.cpp)
+target_link_libraries(test_record_replay PRIVATE sdr_analyzer Threads::Threads)
+target_include_directories(test_record_replay PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+add_test(NAME record_replay COMMAND test_record_replay)

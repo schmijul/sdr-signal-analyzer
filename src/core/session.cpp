@@ -49,15 +49,16 @@ class AnalyzerSession::Impl {
   }
 
   void Stop() {
+    bool should_join = false;
     {
       std::scoped_lock lock(mutex_);
-      if (!running_) {
-        return;
+      should_join = worker_.joinable();
+      if (running_) {
+        running_ = false;
       }
-      running_ = false;
     }
 
-    if (worker_.joinable()) {
+    if (should_join) {
       worker_.join();
     }
 
