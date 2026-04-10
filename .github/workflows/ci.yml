@@ -73,6 +73,17 @@ jobs:
           print("python-smoke-ok")
           PY
 
+      - name: Link check
+        uses: lycheeverse/lychee-action@v1
+        with:
+          args: >-
+            --no-progress
+            --verbose
+            --exclude '^https://schmijul.github.io/sdr-signal-analyzer/?$'
+            README.md docs
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
   package-smoke:
     runs-on: ubuntu-latest
 
@@ -116,6 +127,11 @@ jobs:
           print("installed-package-smoke-ok")
           PY
 
+      - name: Demo smoke
+        run: |
+          python -m sdr_signal_analyzer.demo --frames 2
+          sdr-signal-analyzer-demo --frames 2
+
   docs:
     runs-on: ubuntu-latest
 
@@ -135,3 +151,24 @@ jobs:
 
       - name: Build documentation
         run: mkdocs build --strict
+
+      - name: Link check
+        uses: lycheeverse/lychee-action@v1
+        with:
+          args: >-
+            --no-progress
+            --verbose
+            --exclude '^https://schmijul.github.io/sdr-signal-analyzer/?$'
+            README.md docs
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+  install-smoke:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Fresh Ubuntu install smoke
+        run: docker run --rm -v "${{ github.workspace }}:/work" -w /work ubuntu:24.04 bash scripts/install_smoke_ubuntu.sh

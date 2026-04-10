@@ -17,8 +17,6 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    outputs:
-      pages_enabled: ${{ steps.pages_check.outputs.pages_enabled }}
 
     steps:
       - name: Checkout
@@ -37,6 +35,17 @@ jobs:
       - name: Build site
         run: mkdocs build --strict
 
+      - name: Link check
+        uses: lycheeverse/lychee-action@v1
+        with:
+          args: >-
+            --no-progress
+            --verbose
+            --exclude '^https://schmijul.github.io/sdr-signal-analyzer/?$'
+            README.md docs
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
       - name: Check Pages configuration
         id: pages_check
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -44,24 +53,24 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           if gh api repos/${{ github.repository }}/pages >/dev/null 2>&1; then
-            echo "pages_enabled=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "pages_enabled=false" >> "$GITHUB_OUTPUT"
-            echo "GitHub Pages is not enabled yet; skipping deployment steps."
+            exit 0
           fi
+          echo "GitHub Pages is not enabled for this repository." >&2
+          echo "Enable Pages before merging this change so the docs site can deploy." >&2
+          exit 1
 
       - name: Configure GitHub Pages
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.pages_check.outputs.pages_enabled == 'true'
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: actions/configure-pages@v5
 
       - name: Upload Pages artifact
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.pages_check.outputs.pages_enabled == 'true'
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: actions/upload-pages-artifact@v3
         with:
           path: site
 
   deploy:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.build.outputs.pages_enabled == 'true'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: build
     runs-on: ubuntu-latest
     permissions:
@@ -75,3 +84,16 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+      - name: Verify published docs site
+        env:
+          SITE_URL: ${{ steps.deployment.outputs.page_url }}
+        run: |
+          for attempt in 1 2 3 4 5; do
+            if curl -fsSL "$SITE_URL" >/dev/null; then
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "Published docs site was not reachable at $SITE_URL." >&2
+          exit 1
