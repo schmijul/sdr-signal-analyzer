@@ -63,6 +63,7 @@ Releases = "https://github.com/schmijul/sdr-signal-analyzer/releases"
 
 [project.scripts]
 sdr-signal-analyzer-gui = "sdr_signal_analyzer.gui:main"
+sdr-signal-analyzer-demo = "sdr_signal_analyzer.demo:main"
 
 [tool.scikit-build]
 cmake.build-type = "Release"
@@ -77,7 +78,7 @@ profile = "black"
 [tool.cibuildwheel]
 build = "cp310-* cp311-* cp312-*"
 skip = "pp* *-musllinux* *_i686"
-test-command = "python -c \"from sdr_signal_analyzer import AnalyzerSession, ProcessingConfig, SourceConfig, SourceKind; print(SourceKind.SIMULATOR)\""
+test-command = "python -m sdr_signal_analyzer.demo --frames 2"
 
 [tool.cibuildwheel.environment]
 CMAKE_ARGS = "-DSDR_ANALYZER_ENABLE_SOAPYSDR=OFF -DSDR_ANALYZER_ENABLE_UHD=OFF"

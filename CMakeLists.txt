@@ -132,3 +132,15 @@ if(SDR_ANALYZER_BUILD_PYTHON AND Python3_FOUND AND TARGET _sdr_signal_analyzer)
   )
   set_tests_properties(gui_validation PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 10)
 endif()
+
+if(Python3_FOUND)
+  add_test(
+    NAME demo
+    COMMAND
+      ${CMAKE_COMMAND} -E env
+      PYTHONPATH=${CMAKE_CURRENT_SOURCE_DIR}/python
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_demo.py
+  )
+  set_tests_properties(demo PROPERTIES TIMEOUT 20)
+endif()
