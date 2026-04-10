@@ -44,7 +44,8 @@ class SoapySource final : public ISampleSource {
       if (!ApplyConfig(error)) {
         return false;
       }
-      stream_ = device_->setupStream(SOAPY_SDR_RX, SOAPY_SDR_CF32);
+      std::vector<size_t> channels = {config_.channel};
+      stream_ = device_->setupStream(SOAPY_SDR_RX, SOAPY_SDR_CF32, channels);
       if (!stream_) {
         error = "Failed to create SoapySDR RX stream.";
         return false;
@@ -107,9 +108,16 @@ class SoapySource final : public ISampleSource {
  private:
   bool ApplyConfig(std::string& error) {
     try {
-      device_->setSampleRate(SOAPY_SDR_RX, 0, config_.sample_rate_hz);
-      device_->setFrequency(SOAPY_SDR_RX, 0, config_.center_frequency_hz);
-      device_->setGain(SOAPY_SDR_RX, 0, config_.gain_db);
+      const size_t channel = config_.channel;
+      device_->setSampleRate(SOAPY_SDR_RX, channel, config_.sample_rate_hz);
+      device_->setFrequency(SOAPY_SDR_RX, channel, config_.center_frequency_hz);
+      device_->setGain(SOAPY_SDR_RX, channel, config_.gain_db);
+      if (config_.bandwidth_hz > 0.0) {
+        device_->setBandwidth(SOAPY_SDR_RX, channel, config_.bandwidth_hz);
+      }
+      if (!config_.antenna.empty()) {
+        device_->setAntenna(SOAPY_SDR_RX, channel, config_.antenna);
+      }
     } catch (const std::exception& ex) {
       error = ex.what();
       return false;

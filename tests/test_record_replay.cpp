@@ -18,6 +18,8 @@ using sdr_analyzer::RecordingFormat;
 using sdr_analyzer::SourceConfig;
 using sdr_analyzer::SourceKind;
 
+const auto kFixtureRoot = std::filesystem::path(__FILE__).parent_path() / "fixtures";
+
 void Require(const bool condition, const std::string& message) {
   if (!condition) {
     throw std::runtime_error(message);
@@ -46,6 +48,18 @@ void WriteTruncatedFloatCapture(const std::string& path) {
 template <typename CharT>
 bool Contains(const std::basic_string<CharT>& text, const std::string& needle) {
   return text.find(needle) != std::basic_string<CharT>::npos;
+}
+
+void RequireDetectionNear(
+    const sdr_analyzer::AnalyzerSnapshot& snapshot,
+    const double expected_frequency_hz,
+    const double tolerance_hz) {
+  for (const auto& detection : snapshot.analysis.detections) {
+    if (std::abs(detection.center_frequency_hz - expected_frequency_hz) <= tolerance_hz) {
+      return;
+    }
+  }
+  throw std::runtime_error("Expected a detection near " + std::to_string(expected_frequency_hz) + " Hz.");
 }
 
 void TestRecordingReplay(const RecordingFormat format, const std::string& suffix) {
@@ -131,6 +145,75 @@ void TestMetadataFailurePaths() {
   std::filesystem::remove_all(temp_root);
 }
 
+void TestFixtureReplay() {
+  ProcessingConfig processing;
+  processing.fft_size = 2048;
+  processing.display_samples = 1024;
+
+  SourceConfig raw_source;
+  raw_source.kind = SourceKind::kReplay;
+  raw_source.input_path = (kFixtureRoot / "tone_cf32.bin").string();
+  raw_source.metadata_path = (kFixtureRoot / "tone_cf32.bin.json").string();
+  raw_source.frame_samples = 2048;
+  AnalyzerSession raw_session(raw_source, processing);
+  Require(raw_session.start(), "Fixture raw replay failed to start: " + raw_session.last_error());
+  const auto raw_snapshot = WaitForSnapshot(
+      raw_session,
+      [](const sdr_analyzer::AnalyzerSnapshot& snapshot) { return !snapshot.analysis.detections.empty(); });
+  raw_session.stop();
+  RequireDetectionNear(raw_snapshot, 100150000.0, 4000.0);
+
+  SourceConfig sigmf_source;
+  sigmf_source.kind = SourceKind::kReplay;
+  sigmf_source.input_path = (kFixtureRoot / "tone_cf32.sigmf-data").string();
+  sigmf_source.metadata_path = (kFixtureRoot / "tone_cf32.sigmf-meta").string();
+  sigmf_source.frame_samples = 2048;
+  AnalyzerSession sigmf_session(sigmf_source, processing);
+  Require(sigmf_session.start(), "Fixture SigMF replay failed to start: " + sigmf_session.last_error());
+  const auto sigmf_snapshot = WaitForSnapshot(
+      sigmf_session,
+      [](const sdr_analyzer::AnalyzerSnapshot& snapshot) { return !snapshot.analysis.detections.empty(); });
+  sigmf_session.stop();
+  RequireDetectionNear(sigmf_snapshot, 100150000.0, 4000.0);
+}
+
+void TestExplicitMissingMetadataFailsFast() {
+  ProcessingConfig processing;
+  processing.fft_size = 1024;
+
+  SourceConfig source;
+  source.kind = SourceKind::kReplay;
+  source.input_path = (kFixtureRoot / "tone_cf32.bin").string();
+  source.metadata_path = "tests/fixtures/missing.bin.json";
+
+  AnalyzerSession session(source, processing);
+  Require(!session.start(), "Replay with explicitly missing metadata should fail at startup.");
+  Require(Contains(session.last_error(), "not found"), "Expected a missing-metadata error.");
+}
+
+void TestMissingSigmfMetadataFailsFast() {
+  const auto temp_root = std::filesystem::temp_directory_path() / "sdr_analyzer_missing_sigmf_meta";
+  std::filesystem::create_directories(temp_root);
+  const auto data_path = temp_root / "fixture.sigmf-data";
+  std::filesystem::copy_file(
+      kFixtureRoot / "tone_cf32.sigmf-data",
+      data_path,
+      std::filesystem::copy_options::overwrite_existing);
+
+  ProcessingConfig processing;
+  processing.fft_size = 1024;
+
+  SourceConfig source;
+  source.kind = SourceKind::kReplay;
+  source.input_path = data_path.string();
+
+  AnalyzerSession session(source, processing);
+  Require(!session.start(), "SigMF replay without metadata should fail at startup.");
+  Require(Contains(session.last_error(), ".sigmf-meta"), "Expected a SigMF metadata error.");
+
+  std::filesystem::remove_all(temp_root);
+}
+
 void TestMalformedReplayDataFailsGracefully() {
   const auto temp_root = std::filesystem::temp_directory_path() / "sdr_analyzer_malformed_replay_test";
   std::filesystem::create_directories(temp_root);
@@ -138,6 +221,15 @@ void TestMalformedReplayDataFailsGracefully() {
   const auto meta_path = (temp_root / "truncated.bin.json").string();
 
   WriteTruncatedFloatCapture(data_path);
+  sdr_analyzer::SourceConfig metadata_source;
+  metadata_source.sample_format = sdr_analyzer::SampleFormat::kComplexFloat32;
+  metadata_source.sample_rate_hz = 2.4e6;
+  metadata_source.center_frequency_hz = 100e6;
+  metadata_source.frame_samples = 1024;
+  std::string metadata_error;
+  Require(
+      sdr_analyzer::io::WriteRawMetadata(meta_path, metadata_source, metadata_error),
+      "Failed to write metadata for malformed replay fixture.");
 
   sdr_analyzer::SourceConfig source;
   source.kind = SourceKind::kReplay;
@@ -170,6 +262,9 @@ int main() {
     TestRecordingReplay(RecordingFormat::kRawBin, "raw");
     TestRecordingReplay(RecordingFormat::kSigMF, "sigmf");
     TestMetadataFailurePaths();
+    TestFixtureReplay();
+    TestExplicitMissingMetadataFailsFast();
+    TestMissingSigmfMetadataFailsFast();
     TestMalformedReplayDataFailsGracefully();
   } catch (const std::exception& ex) {
     std::cerr << ex.what() << "\n";

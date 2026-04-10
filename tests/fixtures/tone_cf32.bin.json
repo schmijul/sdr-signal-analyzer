@@ -1,0 +1,8 @@
+{
+  "sample_rate_hz": 2400000.0,
+  "center_frequency_hz": 100000000.0,
+  "gain_db": 0.0,
+  "frame_samples": 4096,
+  "sample_format": "cf32_le",
+  "capture_start_utc": "2026-01-01T00:00:00Z"
+}

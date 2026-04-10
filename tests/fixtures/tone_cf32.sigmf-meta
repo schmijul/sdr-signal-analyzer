@@ -1,0 +1,15 @@
+{
+  "global": {
+    "core:datatype": "cf32_le",
+    "core:sample_rate": 2400000.0
+  },
+  "captures": [
+    {
+      "core:sample_start": 0,
+      "core:frequency": 100000000.0,
+      "core:datetime": "2026-01-01T00:00:00Z",
+      "sdr_analyzer:gain_db": 0.0
+    }
+  ],
+  "annotations": []
+}

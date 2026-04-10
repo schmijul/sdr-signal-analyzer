@@ -9,6 +9,7 @@ enum class SourceKind {
   kSimulator,
   kReplay,
   kRtlTcp,
+  kUhd,
   kSoapy,
 };
 
@@ -25,10 +26,16 @@ enum class RecordingFormat {
 struct SourceConfig {
   SourceKind kind = SourceKind::kSimulator;
   std::string device_string;
+  std::string device_args;
   std::string input_path;
   std::string metadata_path;
   std::string network_host = "127.0.0.1";
   int network_port = 1234;
+  std::size_t channel = 0;
+  std::string antenna;
+  double bandwidth_hz = 0.0;
+  std::string clock_source;
+  std::string time_source;
   double center_frequency_hz = 100e6;
   double sample_rate_hz = 2.4e6;
   double gain_db = 10.0;

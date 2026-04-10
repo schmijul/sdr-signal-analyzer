@@ -16,8 +16,10 @@ using sdr_analyzer::SourceKind;
 
 void PrintUsage() {
   std::cout
-      << "Usage: sdr-analyzer-cli [--source simulator|replay|rtl_tcp|soapy] [--input FILE] [--meta FILE]\n"
-      << "                        [--host HOST] [--port PORT]\n"
+      << "Usage: sdr-analyzer-cli [--source simulator|replay|rtl_tcp|uhd|soapy] [--input FILE] [--meta FILE]\n"
+      << "                        [--host HOST] [--port PORT] [--device-string TEXT] [--device-args TEXT]\n"
+      << "                        [--channel N] [--antenna NAME] [--bandwidth-hz HZ]\n"
+      << "                        [--clock-source NAME] [--time-source NAME]\n"
       << "                        [--center-hz HZ] [--sample-rate HZ] [--gain-db DB]\n"
       << "                        [--fft-size N] [--frames N] [--record-base PATH]\n"
       << "                        [--record-format raw|sigmf] [--loop]\n";
@@ -29,6 +31,9 @@ SourceKind ParseSourceKind(const std::string& value) {
   }
   if (value == "rtl_tcp") {
     return SourceKind::kRtlTcp;
+  }
+  if (value == "uhd") {
+    return SourceKind::kUhd;
   }
   if (value == "soapy") {
     return SourceKind::kSoapy;
@@ -60,6 +65,10 @@ int main(int argc, char** argv) {
 
     if (arg == "--source") {
       source_config.kind = ParseSourceKind(next_value("--source"));
+    } else if (arg == "--device-string") {
+      source_config.device_string = next_value("--device-string");
+    } else if (arg == "--device-args") {
+      source_config.device_args = next_value("--device-args");
     } else if (arg == "--input") {
       source_config.input_path = next_value("--input");
     } else if (arg == "--meta") {
@@ -68,6 +77,16 @@ int main(int argc, char** argv) {
       source_config.network_host = next_value("--host");
     } else if (arg == "--port") {
       source_config.network_port = std::stoi(next_value("--port"));
+    } else if (arg == "--channel") {
+      source_config.channel = static_cast<std::size_t>(std::stoull(next_value("--channel")));
+    } else if (arg == "--antenna") {
+      source_config.antenna = next_value("--antenna");
+    } else if (arg == "--bandwidth-hz") {
+      source_config.bandwidth_hz = std::stod(next_value("--bandwidth-hz"));
+    } else if (arg == "--clock-source") {
+      source_config.clock_source = next_value("--clock-source");
+    } else if (arg == "--time-source") {
+      source_config.time_source = next_value("--time-source");
     } else if (arg == "--center-hz") {
       source_config.center_frequency_hz = std::stod(next_value("--center-hz"));
     } else if (arg == "--sample-rate") {

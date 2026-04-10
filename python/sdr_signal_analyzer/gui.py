@@ -333,13 +333,27 @@ class MainWindow(QtWidgets.QMainWindow):
         controls = QtWidgets.QGridLayout()
         self._source_kind = QtWidgets.QComboBox()
         self._source_kind.addItem("Simulator", SourceKind.SIMULATOR)
+        self._source_kind.addItem("Replay", SourceKind.REPLAY)
         self._source_kind.addItem("rtl_tcp", SourceKind.RTL_TCP)
+        self._source_kind.addItem("UHD", SourceKind.UHD)
+        self._source_kind.addItem("SoapySDR", SourceKind.SOAPY)
+        self._source_kind.currentIndexChanged.connect(self._refresh_source_controls)
         self._center_edit = QtWidgets.QLineEdit("100000000")
         self._rate_edit = QtWidgets.QLineEdit("2400000")
         self._gain_edit = QtWidgets.QLineEdit("10")
         self._fft_edit = QtWidgets.QLineEdit(str(processing.fft_size))
+        self._input_path_edit = QtWidgets.QLineEdit("")
+        self._metadata_path_edit = QtWidgets.QLineEdit("")
+        self._loop_checkbox = QtWidgets.QCheckBox("Loop Replay")
         self._host_edit = QtWidgets.QLineEdit("127.0.0.1")
         self._port_edit = QtWidgets.QLineEdit("1234")
+        self._device_string_edit = QtWidgets.QLineEdit("")
+        self._device_args_edit = QtWidgets.QLineEdit("")
+        self._channel_edit = QtWidgets.QLineEdit("0")
+        self._antenna_edit = QtWidgets.QLineEdit("")
+        self._bandwidth_edit = QtWidgets.QLineEdit("")
+        self._clock_source_edit = QtWidgets.QLineEdit("")
+        self._time_source_edit = QtWidgets.QLineEdit("")
         self._marker_center_edit = QtWidgets.QLineEdit("100000000")
         self._marker_bw_edit = QtWidgets.QLineEdit("200000")
         self._start_button = QtWidgets.QPushButton("Start")
@@ -347,24 +361,47 @@ class MainWindow(QtWidgets.QMainWindow):
         self._marker_button = QtWidgets.QPushButton("Update Marker")
         self._marker_button.clicked.connect(self._update_marker)
 
-        control_specs = [
-            ("Source", self._source_kind),
-            ("Center Hz", self._center_edit),
-            ("Sample Rate", self._rate_edit),
-            ("Gain dB", self._gain_edit),
-            ("FFT Size", self._fft_edit),
-            ("rtl_tcp Host", self._host_edit),
-            ("rtl_tcp Port", self._port_edit),
-            ("Marker Hz", self._marker_center_edit),
-            ("Marker BW", self._marker_bw_edit),
-        ]
-        for index, (label, widget) in enumerate(control_specs):
+        self._source_controls: list[tuple[QtWidgets.QLabel, QtWidgets.QWidget, set[SourceKind] | None]] = []
+
+        def add_control(
+            index: int,
+            label_text: str,
+            widget: QtWidgets.QWidget,
+            visible_for: set[SourceKind] | None = None,
+        ) -> None:
             row = index // 4
             column = (index % 4) * 2
-            controls.addWidget(QtWidgets.QLabel(label), row, column)
+            label = QtWidgets.QLabel(label_text)
+            controls.addWidget(label, row, column)
             controls.addWidget(widget, row, column + 1)
-        controls.addWidget(self._start_button, 2, 0, 1, 2)
-        controls.addWidget(self._marker_button, 2, 2, 1, 2)
+            self._source_controls.append((label, widget, visible_for))
+
+        add_control(0, "Source", self._source_kind)
+        add_control(1, "Center Hz", self._center_edit)
+        add_control(2, "Sample Rate", self._rate_edit)
+        add_control(3, "Gain dB", self._gain_edit)
+        add_control(4, "FFT Size", self._fft_edit)
+        add_control(5, "Replay Input", self._input_path_edit, {SourceKind.REPLAY})
+        add_control(6, "Replay Metadata", self._metadata_path_edit, {SourceKind.REPLAY})
+        add_control(7, "rtl_tcp Host", self._host_edit, {SourceKind.RTL_TCP})
+        add_control(8, "rtl_tcp Port", self._port_edit, {SourceKind.RTL_TCP})
+        add_control(9, "Soapy Device", self._device_string_edit, {SourceKind.SOAPY})
+        add_control(10, "UHD Device Args", self._device_args_edit, {SourceKind.UHD})
+        add_control(11, "Channel", self._channel_edit, {SourceKind.UHD, SourceKind.SOAPY})
+        add_control(12, "Antenna", self._antenna_edit, {SourceKind.UHD, SourceKind.SOAPY})
+        add_control(13, "Bandwidth Hz", self._bandwidth_edit, {SourceKind.UHD, SourceKind.SOAPY})
+        add_control(14, "Clock Source", self._clock_source_edit, {SourceKind.UHD})
+        add_control(15, "Time Source", self._time_source_edit, {SourceKind.UHD})
+        add_control(16, "Marker Hz", self._marker_center_edit)
+        add_control(17, "Marker BW", self._marker_bw_edit)
+
+        loop_label = QtWidgets.QLabel("Replay Loop")
+        controls.addWidget(loop_label, 4, 0)
+        controls.addWidget(self._loop_checkbox, 4, 1)
+        self._source_controls.append((loop_label, self._loop_checkbox, {SourceKind.REPLAY}))
+
+        controls.addWidget(self._start_button, 4, 2, 1, 2)
+        controls.addWidget(self._marker_button, 4, 4, 1, 2)
         layout.addLayout(controls)
 
         self._spectrum_plot = PlotCanvas("Spectrum", -140.0, 0.0, show_x_labels=True, show_legend=True)
@@ -387,6 +424,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self._apply_palette()
         self._waterfall.set_fft_size(processing.fft_size)
+        self._refresh_source_controls()
 
     def _apply_palette(self) -> None:
         self.setStyleSheet(
@@ -396,11 +434,14 @@ class MainWindow(QtWidgets.QMainWindow):
                 color: #e8eaed;
                 font-size: 12px;
             }
-            QLineEdit, QTableWidget, QPushButton {
+            QLineEdit, QTableWidget, QPushButton, QComboBox {
                 background: #171b22;
                 border: 1px solid #2a313d;
                 border-radius: 6px;
                 padding: 4px 6px;
+            }
+            QCheckBox {
+                spacing: 8px;
             }
             QPushButton:hover {
                 border-color: #4c5668;
@@ -416,6 +457,23 @@ class MainWindow(QtWidgets.QMainWindow):
     def closeEvent(self, event: QtGui.QCloseEvent) -> None:  # noqa: N802
         self._session.stop()
         super().closeEvent(event)
+
+    def _refresh_source_controls(self) -> None:
+        current_kind = self._source_kind.currentData()
+        for label, widget, visible_for in self._source_controls:
+            visible = visible_for is None or current_kind in visible_for
+            label.setVisible(visible)
+            widget.setVisible(visible)
+
+    @staticmethod
+    def _parse_int(text: str, default: int = 0) -> int:
+        stripped = text.strip()
+        return int(stripped) if stripped else default
+
+    @staticmethod
+    def _parse_float(text: str, default: float = 0.0) -> float:
+        stripped = text.strip()
+        return float(stripped) if stripped else default
 
     def _update_marker(self) -> None:
         marker = Marker()
@@ -440,8 +498,18 @@ class MainWindow(QtWidgets.QMainWindow):
         source.sample_rate_hz = float(self._rate_edit.text())
         source.gain_db = float(self._gain_edit.text())
         source.kind = self._source_kind.currentData()
+        source.input_path = self._input_path_edit.text().strip()
+        source.metadata_path = self._metadata_path_edit.text().strip()
+        source.loop_playback = self._loop_checkbox.isChecked()
         source.network_host = self._host_edit.text().strip()
-        source.network_port = int(self._port_edit.text())
+        source.network_port = self._parse_int(self._port_edit.text(), 1234)
+        source.device_string = self._device_string_edit.text().strip()
+        source.device_args = self._device_args_edit.text().strip()
+        source.channel = max(0, self._parse_int(self._channel_edit.text(), 0))
+        source.antenna = self._antenna_edit.text().strip()
+        source.bandwidth_hz = self._parse_float(self._bandwidth_edit.text(), 0.0)
+        source.clock_source = self._clock_source_edit.text().strip()
+        source.time_source = self._time_source_edit.text().strip()
         if not self._session.update_source_config(source):
             self._status_label.setText(f"Source update failed: {self._session.last_error()}")
             return

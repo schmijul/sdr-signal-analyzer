@@ -19,6 +19,14 @@ std::unique_ptr<ISampleSource> CreateSource(const SourceConfig& config, std::str
     }
     case SourceKind::kRtlTcp:
       return std::make_unique<RtlTcpSource>();
+    case SourceKind::kUhd:
+#if defined(SDR_ANALYZER_HAVE_UHD)
+      extern std::unique_ptr<ISampleSource> CreateUhdSource();
+      return CreateUhdSource();
+#else
+      error = "UHD backend requested but UHD was not found at build time.";
+      return nullptr;
+#endif
     case SourceKind::kSoapy:
 #if defined(SDR_ANALYZER_HAVE_SOAPYSDR)
       extern std::unique_ptr<ISampleSource> CreateSoapySource();

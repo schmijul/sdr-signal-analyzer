@@ -10,6 +10,10 @@ on:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
 
     steps:
       - name: Checkout
@@ -18,7 +22,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: ${{ matrix.python-version }}
 
       - name: Install native build tools
         run: |
@@ -31,7 +35,7 @@ jobs:
           python -m pip install pybind11 scikit-build-core PySide6
 
       - name: Configure
-        run: cmake -S . -B build -G Ninja -DSDR_ANALYZER_ENABLE_SOAPYSDR=OFF
+        run: cmake -S . -B build -G Ninja -DSDR_ANALYZER_ENABLE_SOAPYSDR=OFF -DSDR_ANALYZER_ENABLE_UHD=OFF
 
       - name: Build
         run: cmake --build build

@@ -37,12 +37,24 @@ bool ReplaySource::Configure(const SourceConfig& config, std::string& error) {
 
   SourceConfig metadata_config = config_;
   const std::string metadata_path = DefaultMetadataPath(config_);
+  const std::filesystem::path input_path(config_.input_path);
+  if (!metadata_path.empty() && !std::filesystem::exists(metadata_path) && !config_.metadata_path.empty()) {
+    error = "Replay metadata file was explicitly requested but not found: " + metadata_path;
+    return false;
+  }
+  if (input_path.extension() == ".sigmf-data" && !metadata_path.empty() && !std::filesystem::exists(metadata_path)) {
+    error = "SigMF replay requires a matching .sigmf-meta file: " + metadata_path;
+    return false;
+  }
   if (!metadata_path.empty() && std::filesystem::exists(metadata_path)) {
     bool parsed = false;
     if (metadata_path.ends_with(".sigmf-meta")) {
       parsed = io::ReadSigmfMetadata(metadata_path, metadata_config, error);
     } else {
       parsed = io::ReadRawMetadata(metadata_path, metadata_config, error);
+    }
+    if (!parsed) {
+      return false;
     }
     if (parsed) {
       metadata_config.input_path = config_.input_path;

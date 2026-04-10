@@ -2,12 +2,12 @@
 
 C++-first SDR spectrum analyzer with a Python GUI on top. The backend owns capture, FFT processing, detection, recording, replay, and analysis so it can run headless through a CLI or be embedded into other frontends without pulling Python into the core runtime.
 
-The current repo state is a publishable MVP:
+This repo currently ships as a strong MVP with:
 - real-time spectrum, waterfall, and time-domain views
-- automatic peak detection, bandwidth estimation, noise-floor estimation, and coarse signal labels
-- IQ recording and deterministic replay
-- built-in simulator, self-implemented `rtl_tcp` client, and optional SoapySDR support
-- self-rendered Qt GUI using only PySide6 on the frontend side
+- automatic peak detection, bandwidth estimation, noise-floor estimation, and coarse labels
+- raw `.bin` and SigMF recording/replay
+- built-in simulator, self-implemented `rtl_tcp`, first-class optional UHD/USRP support, and optional SoapySDR
+- backend regression tests plus Python/GUI smoke coverage
 
 ## Screenshots
 
@@ -18,41 +18,6 @@ Simulator-driven portfolio scenes generated from the checked-in codepath:
 ![433 MHz style scene](docs/screenshots/ism_433.png)
 
 ![Narrowband focus](docs/screenshots/narrowband_focus.png)
-
-You can regenerate these assets with [generate_portfolio_assets.py](scripts/generate_portfolio_assets.py) in an offscreen Qt session.
-
-## Architecture
-
-- `include/sdr_analyzer/`: public C++ API
-- `src/core/`: session lifecycle and dataflow orchestration
-- `src/sdr/`: simulator, replay, `rtl_tcp`, and optional SoapySDR sources
-- `src/dsp/`: FFT, averaging, peak hold, peak detection, bandwidth/noise estimation, classification
-- `src/io/`: raw `.bin` and SigMF metadata handling, recording, replay helpers
-- `src/cli/`: backend-only CLI for capture/replay/analysis
-- `python/sdr_signal_analyzer/`: `pybind11` bindings and PySide6 GUI
-- `tests/`: DSP, `rtl_tcp`, and record/replay regression coverage
-
-## What Is Implemented
-
-- Live spectrum frame generation with dBFS scaling
-- Waterfall and time-domain rendering
-- Controls for center frequency, sample rate, gain, FFT size, averaging, and peak hold
-- Marker measurements with peak and average dBFS inside the marked span
-- Automatic peak detection
-- Occupied-bandwidth estimation
-- Robust noise-floor estimation
-- Coarse heuristic labels:
-  - `likely FM`
-  - `narrowband`
-  - `broadband`
-  - `burst-like`
-- IQ recording and replay:
-  - raw `.bin` + JSON metadata sidecar
-  - SigMF `.sigmf-data` + `.sigmf-meta`
-- Live source options:
-  - built-in simulator
-  - self-implemented `rtl_tcp` network backend
-  - optional SoapySDR backend when available at build time
 
 ## Quickstart
 
@@ -65,8 +30,6 @@ ctest --test-dir build --output-on-failure
 ```
 
 ### Python GUI
-
-Use a virtual environment on Linux systems with externally managed Python:
 
 ```bash
 python3 -m venv .venv
@@ -84,7 +47,25 @@ PYTHONPATH=python python -m sdr_signal_analyzer
 ./build/sdr-analyzer-cli --source simulator --frames 20
 ```
 
-## CLI Examples
+## Docs
+
+- [Architecture](docs/architecture.md)
+- [Public API](docs/api.md)
+- [UHD / USRP Source Guide](docs/sources/uhd.md)
+- [rtl_tcp Source Guide](docs/sources/rtltcp.md)
+- [Replay And Recording](docs/replay-and-recording.md)
+- [Testing And Validation](docs/testing.md)
+- [Case Studies And Screenshots](docs/case-studies.md)
+
+## Source Backends
+
+- `simulator`: deterministic local source for development, screenshots, and most smoke tests
+- `replay`: raw `.bin` plus JSON sidecar or SigMF replay path
+- `rtl_tcp`: built-in network client for RTL-SDR style remote streaming
+- `uhd`: first-class native USRP backend when UHD is available at build time
+- `soapy`: optional generic device path when SoapySDR is available
+
+## Representative CLI Flows
 
 Run the simulator backend:
 
@@ -92,7 +73,7 @@ Run the simulator backend:
 ./build/sdr-analyzer-cli --source simulator --frames 20
 ```
 
-Connect to an `rtl_tcp` server without SoapySDR:
+Connect to an `rtl_tcp` server:
 
 ```bash
 ./build/sdr-analyzer-cli \
@@ -104,38 +85,32 @@ Connect to an `rtl_tcp` server without SoapySDR:
   --gain-db 20
 ```
 
-Record a replayable capture:
+Connect to a USRP through UHD:
 
 ```bash
 ./build/sdr-analyzer-cli \
-  --source simulator \
-  --frames 100 \
-  --record-base captures/demo \
-  --record-format sigmf
+  --source uhd \
+  --device-args "type=b200" \
+  --channel 0 \
+  --antenna RX2 \
+  --bandwidth-hz 2000000 \
+  --center-hz 100000000 \
+  --sample-rate 2000000 \
+  --gain-db 25
 ```
 
-Replay a raw IQ dump:
+Replay a committed fixture:
 
 ```bash
 ./build/sdr-analyzer-cli \
   --source replay \
-  --input captures/demo.bin \
-  --meta captures/demo.bin.json \
-  --loop
+  --input tests/fixtures/tone_cf32.sigmf-data \
+  --meta tests/fixtures/tone_cf32.sigmf-meta \
+  --frames 4
 ```
 
-## Publish Notes
+## Notes
 
-This repo is careful about what it claims:
-- the screenshots above are deterministic simulator scenes, not over-the-air recordings
-- the DSP and transport path are implemented in this repo rather than delegated to NumPy, SciPy, or plotting libraries
-- SoapySDR is optional convenience for broader hardware support, not a hard dependency for live input
-
-What would still strengthen it further later:
-- real RF capture case studies with committed replay samples
-- CSV/PNG export workflows
-- scanning and demod preview features
-
-## Continuous Integration
-
-GitHub Actions builds the C++ targets, runs all current tests, and performs a Python binding smoke check on Ubuntu through [.github/workflows/ci.yml](.github/workflows/ci.yml).
+- The screenshots in this repo are simulator-generated unless explicitly documented otherwise.
+- Small replayable fixtures are committed under `tests/fixtures/` for deterministic tests and examples.
+- UHD and Soapy are optional at build time; the repo still builds and tests cleanly without either SDK installed.

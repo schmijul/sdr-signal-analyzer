@@ -4,6 +4,7 @@ project(sdr_signal_analyzer VERSION 0.1.0 LANGUAGES CXX)
 
 option(SDR_ANALYZER_BUILD_PYTHON "Build pybind11 bindings and the Python package glue." ON)
 option(SDR_ANALYZER_ENABLE_SOAPYSDR "Enable the SoapySDR live-device backend when available." ON)
+option(SDR_ANALYZER_ENABLE_UHD "Enable the native UHD USRP backend when available." ON)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -14,6 +15,10 @@ find_package(Threads REQUIRED)
 
 if(SDR_ANALYZER_ENABLE_SOAPYSDR)
   find_package(SoapySDR CONFIG QUIET)
+endif()
+
+if(SDR_ANALYZER_ENABLE_UHD)
+  find_package(UHD QUIET)
 endif()
 
 find_package(Python3 COMPONENTS Interpreter Development.Module QUIET)
@@ -46,6 +51,17 @@ if(SoapySDR_FOUND)
   target_sources(sdr_analyzer PRIVATE src/sdr/soapy_source.cpp)
   target_link_libraries(sdr_analyzer PRIVATE SoapySDR::SoapySDR)
   target_compile_definitions(sdr_analyzer PRIVATE SDR_ANALYZER_HAVE_SOAPYSDR=1)
+endif()
+
+if(UHD_FOUND)
+  target_sources(sdr_analyzer PRIVATE src/sdr/uhd_source.cpp)
+  target_compile_definitions(sdr_analyzer PRIVATE SDR_ANALYZER_HAVE_UHD=1)
+  if(TARGET UHD::uhd)
+    target_link_libraries(sdr_analyzer PRIVATE UHD::uhd)
+  else()
+    target_include_directories(sdr_analyzer PRIVATE ${UHD_INCLUDE_DIRS})
+    target_link_libraries(sdr_analyzer PRIVATE ${UHD_LIBRARIES})
+  endif()
 endif()
 
 add_executable(sdr-analyzer-cli src/cli/main.cpp)
