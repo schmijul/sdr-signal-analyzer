@@ -8,6 +8,7 @@ Thanks for working on `sdr-signal-analyzer`.
 - describe the real user-visible problem, not just the code change
 - include platform details, Python version, compiler, and SDR hardware details when the issue depends on them
 - mention whether the report affects `simulator`, `replay`, `rtl_tcp`, `uhd`, or `soapy`
+- prefer deterministic replay fixtures over live hardware when you can reproduce the problem locally
 
 ## Local Development Setup
 
@@ -43,6 +44,14 @@ twine check dist/*
 
 `pyproject-build` is preferred over `python -m build` because this repository keeps CMake output in the top-level `build/` directory.
 
+When a change affects behavior, follow test-driven development:
+
+1. add or update the regression test first
+2. implement the smallest change that makes the test pass
+3. update docs when the user-facing behavior, install path, or workflow changes
+
+Deterministic fixtures are preferred for signal-processing work. If a change depends on a capture, add a replayable fixture or a synthetic test case rather than relying on live SDR hardware.
+
 ## Formatting And Hooks
 
 Install and enable pre-commit:
@@ -66,6 +75,7 @@ If you are working on those backends:
 - install the relevant SDK before configuring the project
 - say explicitly which SDK and device you validated against
 - keep the no-hardware developer path working unless the change is intentionally backend-specific
+- include a replay or simulator path in your test plan whenever the live backend is not available in CI
 
 ## Pull Request Expectations
 
@@ -74,5 +84,8 @@ Every PR should:
 - mention how it was validated locally
 - update docs when behavior, install steps, or supported workflows change
 - add or extend tests when regression coverage is practical
+- note whether the change touches a public API, a CLI command, or documentation only
+- call out any known gaps, especially if a hardware-backed path could not be validated
+- include the exact commands used for verification when practical
 
 For hardware-sensitive changes, include a short manual validation checklist in the PR description if full automation is not realistic.

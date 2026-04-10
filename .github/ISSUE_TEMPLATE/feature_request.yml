@@ -1,0 +1,55 @@
+name: Feature request
+description: Propose an improvement or new capability.
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Describe the user problem first. Implementation ideas are welcome, but the use case matters most.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem statement
+      description: What user problem should this solve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: What change do you want to see?
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: List other approaches, including why they were rejected if applicable.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Affected area
+      options:
+        - simulator
+        - replay
+        - rtl_tcp
+        - uhd
+        - soapy
+        - gui
+        - cli
+        - docs
+        - packaging
+        - testing
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: What should be true when this request is complete?
+      placeholder: |
+        - ...
+        - ...
+  - type: textarea
+    id: validation
+    attributes:
+      label: Validation
+      description: If you have a test plan, mention how this could be validated deterministically.

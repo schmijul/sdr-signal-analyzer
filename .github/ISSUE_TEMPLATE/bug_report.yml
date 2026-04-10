@@ -1,0 +1,67 @@
+name: Bug report
+description: Report a reproducible bug or regression.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please include enough detail for another contributor to reproduce the issue.
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What happened, and what did you expect instead?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Provide exact commands or actions. Prefer deterministic replay or simulator steps when possible.
+      placeholder: |
+        1. ...
+        2. ...
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version / commit
+      description: If known, include the commit SHA, tag, or package version.
+  - type: dropdown
+    id: source
+    attributes:
+      label: Affected workflow
+      options:
+        - simulator
+        - replay
+        - rtl_tcp
+        - uhd
+        - soapy
+        - gui
+        - cli
+        - docs
+        - packaging
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Include OS, Python version, compiler, backend hardware, and any relevant config.
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / screenshots
+      description: Paste relevant output, traceback, or screenshots.
