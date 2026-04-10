@@ -17,6 +17,8 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    outputs:
+      pages_enabled: ${{ steps.pages_check.outputs.pages_enabled }}
 
     steps:
       - name: Checkout
@@ -35,18 +37,31 @@ jobs:
       - name: Build site
         run: mkdocs build --strict
 
-      - name: Configure GitHub Pages
+      - name: Check Pages configuration
+        id: pages_check
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh api repos/${{ github.repository }}/pages >/dev/null 2>&1; then
+            echo "pages_enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "pages_enabled=false" >> "$GITHUB_OUTPUT"
+            echo "GitHub Pages is not enabled yet; skipping deployment steps."
+          fi
+
+      - name: Configure GitHub Pages
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.pages_check.outputs.pages_enabled == 'true'
         uses: actions/configure-pages@v5
 
       - name: Upload Pages artifact
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.pages_check.outputs.pages_enabled == 'true'
         uses: actions/upload-pages-artifact@v3
         with:
           path: site
 
   deploy:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.build.outputs.pages_enabled == 'true'
     needs: build
     runs-on: ubuntu-latest
     permissions:

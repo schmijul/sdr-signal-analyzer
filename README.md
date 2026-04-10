@@ -2,8 +2,8 @@
 
 [![CI](https://github.com/schmijul/sdr-signal-analyzer/actions/workflows/ci.yml/badge.svg)](https://github.com/schmijul/sdr-signal-analyzer/actions/workflows/ci.yml)
 [![Docs](https://github.com/schmijul/sdr-signal-analyzer/actions/workflows/docs.yml/badge.svg)](https://github.com/schmijul/sdr-signal-analyzer/actions/workflows/docs.yml)
-[![PyPI](https://img.shields.io/pypi/v/sdr-signal-analyzer)](https://pypi.org/project/sdr-signal-analyzer/)
-[![Python Versions](https://img.shields.io/pypi/pyversions/sdr-signal-analyzer)](https://pypi.org/project/sdr-signal-analyzer/)
+[![Status](https://img.shields.io/badge/status-alpha-orange)](https://github.com/schmijul/sdr-signal-analyzer)
+[![Python](https://img.shields.io/badge/python-3.10--3.12-blue)](https://github.com/schmijul/sdr-signal-analyzer/blob/main/pyproject.toml)
 
 C++-first SDR spectrum analyzer with a Python GUI, deterministic replay tooling, and optional live-device integrations. The backend owns capture, FFT processing, detection, recording, replay, and analysis so it can run headless from a CLI, power a Qt desktop UI, or be embedded into other frontends without pulling Python into the core runtime. It is a reusable analysis backend, not a demodulator or protocol decoder.
 
