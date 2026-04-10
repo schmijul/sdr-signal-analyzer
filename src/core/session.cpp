@@ -16,12 +16,13 @@ namespace {
 
 constexpr std::size_t kMaxSnapshots = 8;
 
-}  // namespace
+} // namespace
 
 class AnalyzerSession::Impl {
- public:
+public:
   Impl(SourceConfig source_config, ProcessingConfig processing_config)
-      : source_config_(std::move(source_config)), analyzer_(processing_config), processing_config_(processing_config) {}
+      : source_config_(std::move(source_config)), analyzer_(processing_config),
+        processing_config_(processing_config) {}
 
   ~Impl() { Stop(); }
 
@@ -86,7 +87,7 @@ class AnalyzerSession::Impl {
     return status;
   }
 
-  bool UpdateSourceConfig(const SourceConfig& config) {
+  bool UpdateSourceConfig(const SourceConfig &config) {
     std::scoped_lock lock(mutex_);
     source_config_ = config;
     if (source_) {
@@ -99,13 +100,13 @@ class AnalyzerSession::Impl {
     return true;
   }
 
-  void UpdateProcessingConfig(const ProcessingConfig& config) {
+  void UpdateProcessingConfig(const ProcessingConfig &config) {
     std::scoped_lock lock(mutex_);
     processing_config_ = config;
     analyzer_.UpdateConfig(config);
   }
 
-  bool StartRecording(const RecordingConfig& config) {
+  bool StartRecording(const RecordingConfig &config) {
     std::scoped_lock lock(mutex_);
     std::string error;
     if (!recorder_.Start(config, source_config_, error)) {
@@ -130,7 +131,7 @@ class AnalyzerSession::Impl {
     return snapshot;
   }
 
-  void SetMarkers(const std::vector<Marker>& markers) {
+  void SetMarkers(const std::vector<Marker> &markers) {
     std::scoped_lock lock(mutex_);
     markers_ = markers;
   }
@@ -150,7 +151,7 @@ class AnalyzerSession::Impl {
     return last_error_;
   }
 
- private:
+private:
   void Run() {
     std::vector<std::complex<float>> iq_samples;
     std::uint64_t sequence = 0;
@@ -170,8 +171,8 @@ class AnalyzerSession::Impl {
           break;
         }
 
-        const std::size_t samples_read =
-            source_->ReadSamples(iq_samples, source_config_copy.frame_samples, error);
+        const std::size_t samples_read = source_->ReadSamples(
+            iq_samples, source_config_copy.frame_samples, error);
         if (samples_read == 0) {
           last_error_ = error.empty() ? "Source returned no samples." : error;
           running_ = false;
@@ -186,11 +187,8 @@ class AnalyzerSession::Impl {
           }
         }
         auto snapshot = analyzer_.Process(
-            sequence++,
-            source_config_copy.center_frequency_hz,
-            source_config_copy.sample_rate_hz,
-            iq_samples,
-            markers_copy);
+            sequence++, source_config_copy.center_frequency_hz,
+            source_config_copy.sample_rate_hz, iq_samples, markers_copy);
 
         snapshots_.push_back(std::move(snapshot));
         while (snapshots_.size() > kMaxSnapshots) {
@@ -219,7 +217,8 @@ class AnalyzerSession::Impl {
   std::string last_error_;
 };
 
-AnalyzerSession::AnalyzerSession(SourceConfig source_config, ProcessingConfig processing_config)
+AnalyzerSession::AnalyzerSession(SourceConfig source_config,
+                                 ProcessingConfig processing_config)
     : impl_(new Impl(std::move(source_config), std::move(processing_config))) {}
 
 AnalyzerSession::~AnalyzerSession() { delete impl_; }
@@ -228,14 +227,28 @@ bool AnalyzerSession::start() { return impl_->Start(); }
 void AnalyzerSession::stop() { impl_->Stop(); }
 bool AnalyzerSession::is_running() const { return impl_->IsRunning(); }
 SessionStatus AnalyzerSession::status() const { return impl_->Status(); }
-bool AnalyzerSession::update_source_config(const SourceConfig& config) { return impl_->UpdateSourceConfig(config); }
-void AnalyzerSession::update_processing_config(const ProcessingConfig& config) { impl_->UpdateProcessingConfig(config); }
-bool AnalyzerSession::start_recording(const RecordingConfig& config) { return impl_->StartRecording(config); }
+bool AnalyzerSession::update_source_config(const SourceConfig &config) {
+  return impl_->UpdateSourceConfig(config);
+}
+void AnalyzerSession::update_processing_config(const ProcessingConfig &config) {
+  impl_->UpdateProcessingConfig(config);
+}
+bool AnalyzerSession::start_recording(const RecordingConfig &config) {
+  return impl_->StartRecording(config);
+}
 void AnalyzerSession::stop_recording() { impl_->StopRecording(); }
-std::optional<AnalyzerSnapshot> AnalyzerSession::poll_snapshot() { return impl_->PollSnapshot(); }
-void AnalyzerSession::set_markers(const std::vector<Marker>& markers) { impl_->SetMarkers(markers); }
-SourceConfig AnalyzerSession::source_config() const { return impl_->SourceConfiguration(); }
-ProcessingConfig AnalyzerSession::processing_config() const { return impl_->ProcessingConfiguration(); }
+std::optional<AnalyzerSnapshot> AnalyzerSession::poll_snapshot() {
+  return impl_->PollSnapshot();
+}
+void AnalyzerSession::set_markers(const std::vector<Marker> &markers) {
+  impl_->SetMarkers(markers);
+}
+SourceConfig AnalyzerSession::source_config() const {
+  return impl_->SourceConfiguration();
+}
+ProcessingConfig AnalyzerSession::processing_config() const {
+  return impl_->ProcessingConfiguration();
+}
 std::string AnalyzerSession::last_error() const { return impl_->LastError(); }
 
-}  // namespace sdr_analyzer
+} // namespace sdr_analyzer

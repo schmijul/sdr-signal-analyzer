@@ -15,10 +15,10 @@ namespace sdr_analyzer::sdr {
 namespace {
 
 class SoapySource final : public ISampleSource {
- public:
+public:
   ~SoapySource() override { Stop(); }
 
-  bool Configure(const SourceConfig& config, std::string& error) override {
+  bool Configure(const SourceConfig &config, std::string &error) override {
     config_ = config;
     if (!device_) {
       return true;
@@ -29,11 +29,11 @@ class SoapySource final : public ISampleSource {
     return true;
   }
 
-  bool Start(std::string& error) override {
+  bool Start(std::string &error) override {
     if (!device_) {
       try {
         device_ = SoapySDR::Device::make(config_.device_string);
-      } catch (const std::exception& ex) {
+      } catch (const std::exception &ex) {
         error = ex.what();
         return false;
       }
@@ -74,25 +74,20 @@ class SoapySource final : public ISampleSource {
     active_ = false;
   }
 
-  std::size_t ReadSamples(
-      std::vector<std::complex<float>>& output,
-      const std::size_t max_samples,
-      std::string& error) override {
+  std::size_t ReadSamples(std::vector<std::complex<float>> &output,
+                          const std::size_t max_samples,
+                          std::string &error) override {
     if (!active_ || !device_ || !stream_) {
       error = "SoapySDR stream is not active.";
       return 0;
     }
     output.resize(max_samples);
-    void* buffers[] = {output.data()};
+    void *buffers[] = {output.data()};
     int flags = 0;
     long long time_ns = 0;
-    const int received = device_->readStream(
-        stream_,
-        buffers,
-        static_cast<int>(max_samples),
-        flags,
-        time_ns,
-        250000);
+    const int received =
+        device_->readStream(stream_, buffers, static_cast<int>(max_samples),
+                            flags, time_ns, 250000);
     if (received < 0) {
       error = SoapySDR::errToStr(received);
       return 0;
@@ -102,11 +97,13 @@ class SoapySource final : public ISampleSource {
   }
 
   std::string Description() const override {
-    return config_.device_string.empty() ? "SoapySDR device" : "SoapySDR device: " + config_.device_string;
+    return config_.device_string.empty()
+               ? "SoapySDR device"
+               : "SoapySDR device: " + config_.device_string;
   }
 
- private:
-  bool ApplyConfig(std::string& error) {
+private:
+  bool ApplyConfig(std::string &error) {
     try {
       const size_t channel = config_.channel;
       device_->setSampleRate(SOAPY_SDR_RX, channel, config_.sample_rate_hz);
@@ -118,7 +115,7 @@ class SoapySource final : public ISampleSource {
       if (!config_.antenna.empty()) {
         device_->setAntenna(SOAPY_SDR_RX, channel, config_.antenna);
       }
-    } catch (const std::exception& ex) {
+    } catch (const std::exception &ex) {
       error = ex.what();
       return false;
     }
@@ -126,17 +123,17 @@ class SoapySource final : public ISampleSource {
   }
 
   SourceConfig config_;
-  SoapySDR::Device* device_ = nullptr;
-  SoapySDR::Stream* stream_ = nullptr;
+  SoapySDR::Device *device_ = nullptr;
+  SoapySDR::Stream *stream_ = nullptr;
   bool active_ = false;
 };
 
-}  // namespace
+} // namespace
 
 std::unique_ptr<ISampleSource> CreateSoapySource() {
   return std::make_unique<SoapySource>();
 }
 
-}  // namespace sdr_analyzer::sdr
+} // namespace sdr_analyzer::sdr
 
 #endif

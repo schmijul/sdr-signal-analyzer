@@ -7,17 +7,22 @@
 namespace sdr_analyzer::io {
 namespace {
 
-std::string DataPath(const RecordingConfig& config) {
-  return config.format == RecordingFormat::kSigMF ? config.base_path + ".sigmf-data" : config.base_path + ".bin";
+std::string DataPath(const RecordingConfig &config) {
+  return config.format == RecordingFormat::kSigMF
+             ? config.base_path + ".sigmf-data"
+             : config.base_path + ".bin";
 }
 
-std::string MetadataPath(const RecordingConfig& config) {
-  return config.format == RecordingFormat::kSigMF ? config.base_path + ".sigmf-meta" : config.base_path + ".bin.json";
+std::string MetadataPath(const RecordingConfig &config) {
+  return config.format == RecordingFormat::kSigMF
+             ? config.base_path + ".sigmf-meta"
+             : config.base_path + ".bin.json";
 }
 
-}  // namespace
+} // namespace
 
-bool Recorder::Start(const RecordingConfig& config, const SourceConfig& source_config, std::string& error) {
+bool Recorder::Start(const RecordingConfig &config,
+                     const SourceConfig &source_config, std::string &error) {
   Stop();
   if (config.base_path.empty()) {
     error = "Recording base path must not be empty.";
@@ -34,9 +39,11 @@ bool Recorder::Start(const RecordingConfig& config, const SourceConfig& source_c
 
   bool metadata_ok = false;
   if (config_.format == RecordingFormat::kSigMF) {
-    metadata_ok = WriteSigmfMetadata(MetadataPath(config_), source_config_, error);
+    metadata_ok =
+        WriteSigmfMetadata(MetadataPath(config_), source_config_, error);
   } else {
-    metadata_ok = WriteRawMetadata(MetadataPath(config_), source_config_, error);
+    metadata_ok =
+        WriteRawMetadata(MetadataPath(config_), source_config_, error);
   }
   if (!metadata_ok) {
     Stop();
@@ -55,7 +62,8 @@ void Recorder::Stop() {
   }
 }
 
-bool Recorder::Write(const std::vector<std::complex<float>>& samples, std::string& error) {
+bool Recorder::Write(const std::vector<std::complex<float>> &samples,
+                     std::string &error) {
   if (!active_) {
     return true;
   }
@@ -64,7 +72,9 @@ bool Recorder::Write(const std::vector<std::complex<float>>& samples, std::strin
     active_ = false;
     return false;
   }
-  stream_.write(reinterpret_cast<const char*>(samples.data()), static_cast<std::streamsize>(samples.size() * sizeof(std::complex<float>)));
+  stream_.write(reinterpret_cast<const char *>(samples.data()),
+                static_cast<std::streamsize>(samples.size() *
+                                             sizeof(std::complex<float>)));
   if (!stream_) {
     error = "Failed to write recording samples.";
     active_ = false;
@@ -82,4 +92,4 @@ RecordingStatus Recorder::status() const {
   return status;
 }
 
-}  // namespace sdr_analyzer::io
+} // namespace sdr_analyzer::io

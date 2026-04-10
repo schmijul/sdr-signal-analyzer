@@ -65,12 +65,20 @@ class PlotCanvas(QtWidgets.QWidget):
     ) -> None:
         self._x_values = list(x_values)
         self._series = [
-            (name, color if isinstance(color, QtGui.QColor) else QtGui.QColor(color), list(values))
+            (
+                name,
+                color if isinstance(color, QtGui.QColor) else QtGui.QColor(color),
+                list(values),
+            )
             for name, color, values in series
         ]
         self._noise_floor = noise_floor
         self._annotations = [
-            (position, label, color if isinstance(color, QtGui.QColor) else QtGui.QColor(color))
+            (
+                position,
+                label,
+                color if isinstance(color, QtGui.QColor) else QtGui.QColor(color),
+            )
             for position, label, color in annotations
         ]
         self.update()
@@ -80,7 +88,9 @@ class PlotCanvas(QtWidgets.QWidget):
         margin_top = 32
         margin_right = 18
         margin_bottom = 30 if self._show_x_labels else 16
-        return self.rect().adjusted(margin_left, margin_top, -margin_right, -margin_bottom)
+        return self.rect().adjusted(
+            margin_left, margin_top, -margin_right, -margin_bottom
+        )
 
     def paintEvent(self, event: QtGui.QPaintEvent) -> None:  # noqa: N802
         painter = QtGui.QPainter(self)
@@ -113,7 +123,14 @@ class PlotCanvas(QtWidgets.QWidget):
             ratio = index / y_ticks
             value = self._y_max - (self._y_max - self._y_min) * ratio
             y = plot_rect.top() + int(plot_rect.height() * ratio)
-            painter.drawText(8, y + 4, 68, 16, QtCore.Qt.AlignmentFlag.AlignRight, _format_dbfs(value))
+            painter.drawText(
+                8,
+                y + 4,
+                68,
+                16,
+                QtCore.Qt.AlignmentFlag.AlignRight,
+                _format_dbfs(value),
+            )
             painter.drawLine(plot_rect.left() - 4, y, plot_rect.left(), y)
 
         if not self._x_values or not self._series:
@@ -122,22 +139,36 @@ class PlotCanvas(QtWidgets.QWidget):
             return
 
         x_min = self._x_values[0]
-        x_max = self._x_values[-1] if len(self._x_values) > 1 else self._x_values[0] + 1.0
+        x_max = (
+            self._x_values[-1] if len(self._x_values) > 1 else self._x_values[0] + 1.0
+        )
         if x_max <= x_min:
             x_max = x_min + 1.0
 
         def x_to_pixel(value: float) -> float:
-            return plot_rect.left() + (value - x_min) * plot_rect.width() / (x_max - x_min)
+            return plot_rect.left() + (value - x_min) * plot_rect.width() / (
+                x_max - x_min
+            )
 
         def y_to_pixel(value: float) -> float:
             clamped = _clamp(value, self._y_min, self._y_max)
-            return plot_rect.bottom() - (clamped - self._y_min) * plot_rect.height() / (self._y_max - self._y_min)
+            return plot_rect.bottom() - (clamped - self._y_min) * plot_rect.height() / (
+                self._y_max - self._y_min
+            )
 
         if self._noise_floor is not None:
             noise_y = y_to_pixel(self._noise_floor)
-            painter.setPen(QtGui.QPen(QtGui.QColor("#d08c60"), 1, QtCore.Qt.PenStyle.DashLine))
-            painter.drawLine(plot_rect.left(), int(noise_y), plot_rect.right(), int(noise_y))
-            painter.drawText(plot_rect.right() - 110, int(noise_y) - 4, f"noise {_format_dbfs(self._noise_floor)}")
+            painter.setPen(
+                QtGui.QPen(QtGui.QColor("#d08c60"), 1, QtCore.Qt.PenStyle.DashLine)
+            )
+            painter.drawLine(
+                plot_rect.left(), int(noise_y), plot_rect.right(), int(noise_y)
+            )
+            painter.drawText(
+                plot_rect.right() - 110,
+                int(noise_y) - 4,
+                f"noise {_format_dbfs(self._noise_floor)}",
+            )
 
         for index, (position, label, color) in enumerate(self._annotations[:8]):
             if position < x_min or position > x_max:
@@ -164,7 +195,9 @@ class PlotCanvas(QtWidgets.QWidget):
             first_y = y_to_pixel(values[0])
             path.moveTo(first_x, first_y)
             for index in range(1, count):
-                path.lineTo(x_to_pixel(self._x_values[index]), y_to_pixel(values[index]))
+                path.lineTo(
+                    x_to_pixel(self._x_values[index]), y_to_pixel(values[index])
+                )
             painter.drawPath(path)
 
         if self._show_legend:
@@ -193,7 +226,9 @@ class PlotCanvas(QtWidgets.QWidget):
 
 
 class WaterfallCanvas(QtWidgets.QWidget):
-    def __init__(self, rows: int = 220, parent: QtWidgets.QWidget | None = None) -> None:
+    def __init__(
+        self, rows: int = 220, parent: QtWidgets.QWidget | None = None
+    ) -> None:
         super().__init__(parent)
         self.setMinimumHeight(240)
         self._title = "Waterfall"
@@ -206,7 +241,9 @@ class WaterfallCanvas(QtWidgets.QWidget):
 
     def set_fft_size(self, fft_size: int) -> None:
         self._row_width = fft_size
-        self._image = QtGui.QImage(fft_size, self._rows, QtGui.QImage.Format.Format_RGB32)
+        self._image = QtGui.QImage(
+            fft_size, self._rows, QtGui.QImage.Format.Format_RGB32
+        )
         self._image.fill(QtGui.QColor("#000000"))
         self.update()
 
@@ -216,7 +253,9 @@ class WaterfallCanvas(QtWidgets.QWidget):
         if self._row_width != len(values) or self._image.isNull():
             self.set_fft_size(len(values))
 
-        new_image = QtGui.QImage(self._row_width, self._rows, QtGui.QImage.Format.Format_RGB32)
+        new_image = QtGui.QImage(
+            self._row_width, self._rows, QtGui.QImage.Format.Format_RGB32
+        )
         new_image.fill(QtGui.QColor("#000000"))
         painter = QtGui.QPainter(new_image)
         painter.drawImage(
@@ -245,7 +284,9 @@ class WaterfallCanvas(QtWidgets.QWidget):
 
         if self._image.isNull():
             painter.setPen(QtGui.QColor("#8f99a8"))
-            painter.drawText(plot_rect, QtCore.Qt.AlignmentFlag.AlignCenter, "No waterfall data")
+            painter.drawText(
+                plot_rect, QtCore.Qt.AlignmentFlag.AlignCenter, "No waterfall data"
+            )
             return
 
         painter.drawImage(plot_rect, self._image)
@@ -279,7 +320,11 @@ class WaterfallCanvas(QtWidgets.QWidget):
                 r, g, b = 20.0 + 215.0 * local, 255.0, 80.0 - 80.0 * local
             else:
                 local = (t - 0.75) / 0.25
-                r, g, b = 235.0 + 20.0 * local, 255.0 - 90.0 * local, 0.0 + 255.0 * local
+                r, g, b = (
+                    235.0 + 20.0 * local,
+                    255.0 - 90.0 * local,
+                    0.0 + 255.0 * local,
+                )
             palette.append(QtGui.QColor(int(r), int(g), int(b)))
         return palette
 
@@ -292,7 +337,9 @@ class DetectionTable(QtWidgets.QTableWidget):
         self.verticalHeader().setVisible(False)
         self.setAlternatingRowColors(True)
         self.setEditTriggers(QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers)
-        self.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows)
+        self.setSelectionBehavior(
+            QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows
+        )
         self.setMaximumHeight(220)
 
     def set_detections(self, detections: Sequence[object]) -> None:
@@ -307,7 +354,10 @@ class DetectionTable(QtWidgets.QTableWidget):
             for column, value in enumerate(values):
                 item = QtWidgets.QTableWidgetItem(value)
                 if column == 0:
-                    item.setTextAlignment(QtCore.Qt.AlignmentFlag.AlignRight | QtCore.Qt.AlignmentFlag.AlignVCenter)
+                    item.setTextAlignment(
+                        QtCore.Qt.AlignmentFlag.AlignRight
+                        | QtCore.Qt.AlignmentFlag.AlignVCenter
+                    )
                 self.setItem(row, column, item)
         self.resizeColumnsToContents()
 
@@ -361,7 +411,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self._marker_button = QtWidgets.QPushButton("Update Marker")
         self._marker_button.clicked.connect(self._update_marker)
 
-        self._source_controls: list[tuple[QtWidgets.QLabel, QtWidgets.QWidget, set[SourceKind] | None]] = []
+        self._source_controls: list[
+            tuple[QtWidgets.QLabel, QtWidgets.QWidget, set[SourceKind] | None]
+        ] = []
 
         def add_control(
             index: int,
@@ -387,9 +439,15 @@ class MainWindow(QtWidgets.QMainWindow):
         add_control(8, "rtl_tcp Port", self._port_edit, {SourceKind.RTL_TCP})
         add_control(9, "Soapy Device", self._device_string_edit, {SourceKind.SOAPY})
         add_control(10, "UHD Device Args", self._device_args_edit, {SourceKind.UHD})
-        add_control(11, "Channel", self._channel_edit, {SourceKind.UHD, SourceKind.SOAPY})
-        add_control(12, "Antenna", self._antenna_edit, {SourceKind.UHD, SourceKind.SOAPY})
-        add_control(13, "Bandwidth Hz", self._bandwidth_edit, {SourceKind.UHD, SourceKind.SOAPY})
+        add_control(
+            11, "Channel", self._channel_edit, {SourceKind.UHD, SourceKind.SOAPY}
+        )
+        add_control(
+            12, "Antenna", self._antenna_edit, {SourceKind.UHD, SourceKind.SOAPY}
+        )
+        add_control(
+            13, "Bandwidth Hz", self._bandwidth_edit, {SourceKind.UHD, SourceKind.SOAPY}
+        )
         add_control(14, "Clock Source", self._clock_source_edit, {SourceKind.UHD})
         add_control(15, "Time Source", self._time_source_edit, {SourceKind.UHD})
         add_control(16, "Marker Hz", self._marker_center_edit)
@@ -398,15 +456,21 @@ class MainWindow(QtWidgets.QMainWindow):
         loop_label = QtWidgets.QLabel("Replay Loop")
         controls.addWidget(loop_label, 4, 0)
         controls.addWidget(self._loop_checkbox, 4, 1)
-        self._source_controls.append((loop_label, self._loop_checkbox, {SourceKind.REPLAY}))
+        self._source_controls.append(
+            (loop_label, self._loop_checkbox, {SourceKind.REPLAY})
+        )
 
         controls.addWidget(self._start_button, 4, 2, 1, 2)
         controls.addWidget(self._marker_button, 4, 4, 1, 2)
         layout.addLayout(controls)
 
-        self._spectrum_plot = PlotCanvas("Spectrum", -140.0, 0.0, show_x_labels=True, show_legend=True)
+        self._spectrum_plot = PlotCanvas(
+            "Spectrum", -140.0, 0.0, show_x_labels=True, show_legend=True
+        )
         self._waterfall = WaterfallCanvas(rows=220)
-        self._time_plot = PlotCanvas("Time Domain", -1.5, 1.5, show_x_labels=True, show_legend=True)
+        self._time_plot = PlotCanvas(
+            "Time Domain", -1.5, 1.5, show_x_labels=True, show_legend=True
+        )
         self._detection_table = DetectionTable()
         self._status_label = QtWidgets.QLabel("Idle")
         self._status_label.setStyleSheet("color: #d8dbe2; font-weight: 600;")
@@ -511,7 +575,9 @@ class MainWindow(QtWidgets.QMainWindow):
         source.clock_source = self._clock_source_edit.text().strip()
         source.time_source = self._time_source_edit.text().strip()
         if not self._session.update_source_config(source):
-            self._status_label.setText(f"Source update failed: {self._session.last_error()}")
+            self._status_label.setText(
+                f"Source update failed: {self._session.last_error()}"
+            )
             return
 
         processing = self._session.processing_config()
@@ -539,7 +605,8 @@ class MainWindow(QtWidgets.QMainWindow):
         markers = snapshot.analysis.marker_measurements
 
         x_values = list(
-            (index - (len(spectrum.power_dbfs) / 2.0)) * spectrum.bin_resolution_hz + spectrum.center_frequency_hz
+            (index - (len(spectrum.power_dbfs) / 2.0)) * spectrum.bin_resolution_hz
+            + spectrum.center_frequency_hz
             for index in range(len(spectrum.power_dbfs))
         )
         self._spectrum_plot.set_data(

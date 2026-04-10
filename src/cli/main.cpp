@@ -16,16 +16,21 @@ using sdr_analyzer::SourceKind;
 
 void PrintUsage() {
   std::cout
-      << "Usage: sdr-analyzer-cli [--source simulator|replay|rtl_tcp|uhd|soapy] [--input FILE] [--meta FILE]\n"
-      << "                        [--host HOST] [--port PORT] [--device-string TEXT] [--device-args TEXT]\n"
-      << "                        [--channel N] [--antenna NAME] [--bandwidth-hz HZ]\n"
+      << "Usage: sdr-analyzer-cli [--source "
+         "simulator|replay|rtl_tcp|uhd|soapy] [--input FILE] [--meta FILE]\n"
+      << "                        [--host HOST] [--port PORT] [--device-string "
+         "TEXT] [--device-args TEXT]\n"
+      << "                        [--channel N] [--antenna NAME] "
+         "[--bandwidth-hz HZ]\n"
       << "                        [--clock-source NAME] [--time-source NAME]\n"
-      << "                        [--center-hz HZ] [--sample-rate HZ] [--gain-db DB]\n"
-      << "                        [--fft-size N] [--frames N] [--record-base PATH]\n"
+      << "                        [--center-hz HZ] [--sample-rate HZ] "
+         "[--gain-db DB]\n"
+      << "                        [--fft-size N] [--frames N] [--record-base "
+         "PATH]\n"
       << "                        [--record-format raw|sigmf] [--loop]\n";
 }
 
-SourceKind ParseSourceKind(const std::string& value) {
+SourceKind ParseSourceKind(const std::string &value) {
   if (value == "replay") {
     return SourceKind::kReplay;
   }
@@ -41,13 +46,13 @@ SourceKind ParseSourceKind(const std::string& value) {
   return SourceKind::kSimulator;
 }
 
-RecordingFormat ParseRecordingFormat(const std::string& value) {
+RecordingFormat ParseRecordingFormat(const std::string &value) {
   return value == "sigmf" ? RecordingFormat::kSigMF : RecordingFormat::kRawBin;
 }
 
-}  // namespace
+} // namespace
 
-int main(int argc, char** argv) {
+int main(int argc, char **argv) {
   SourceConfig source_config;
   ProcessingConfig processing_config;
   RecordingConfig recording_config;
@@ -56,7 +61,7 @@ int main(int argc, char** argv) {
 
   for (int index = 1; index < argc; ++index) {
     const std::string arg = argv[index];
-    const auto next_value = [&](const char* name) -> std::string {
+    const auto next_value = [&](const char *name) -> std::string {
       if (index + 1 >= argc) {
         throw std::runtime_error(std::string("Missing value for ") + name);
       }
@@ -78,7 +83,8 @@ int main(int argc, char** argv) {
     } else if (arg == "--port") {
       source_config.network_port = std::stoi(next_value("--port"));
     } else if (arg == "--channel") {
-      source_config.channel = static_cast<std::size_t>(std::stoull(next_value("--channel")));
+      source_config.channel =
+          static_cast<std::size_t>(std::stoull(next_value("--channel")));
     } else if (arg == "--antenna") {
       source_config.antenna = next_value("--antenna");
     } else if (arg == "--bandwidth-hz") {
@@ -94,7 +100,8 @@ int main(int argc, char** argv) {
     } else if (arg == "--gain-db") {
       source_config.gain_db = std::stod(next_value("--gain-db"));
     } else if (arg == "--fft-size") {
-      processing_config.fft_size = static_cast<std::size_t>(std::stoull(next_value("--fft-size")));
+      processing_config.fft_size =
+          static_cast<std::size_t>(std::stoull(next_value("--fft-size")));
       processing_config.display_samples = processing_config.fft_size;
     } else if (arg == "--frames") {
       max_frames = std::stoi(next_value("--frames"));
@@ -102,7 +109,8 @@ int main(int argc, char** argv) {
       recording_config.base_path = next_value("--record-base");
       enable_recording = true;
     } else if (arg == "--record-format") {
-      recording_config.format = ParseRecordingFormat(next_value("--record-format"));
+      recording_config.format =
+          ParseRecordingFormat(next_value("--record-format"));
     } else if (arg == "--loop") {
       source_config.loop_playback = true;
     } else if (arg == "--help") {
@@ -130,10 +138,12 @@ int main(int argc, char** argv) {
   while (frames_seen < max_frames) {
     if (auto snapshot = session.poll_snapshot()) {
       ++frames_seen;
-      std::cout << "frame=" << snapshot->sequence << " noise=" << snapshot->analysis.noise_floor_dbfs
-                << "dBFS strongest=" << snapshot->analysis.strongest_peak_dbfs << "dBFS detections="
-                << snapshot->analysis.detections.size() << "\n";
-      for (const auto& detection : snapshot->analysis.detections) {
+      std::cout << "frame=" << snapshot->sequence
+                << " noise=" << snapshot->analysis.noise_floor_dbfs
+                << "dBFS strongest=" << snapshot->analysis.strongest_peak_dbfs
+                << "dBFS detections=" << snapshot->analysis.detections.size()
+                << "\n";
+      for (const auto &detection : snapshot->analysis.detections) {
         std::cout << "  peak=" << detection.center_frequency_hz << "Hz"
                   << " bw=" << detection.bandwidth_hz << "Hz"
                   << " power=" << detection.peak_power_dbfs << "dBFS"

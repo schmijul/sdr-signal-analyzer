@@ -51,10 +51,13 @@ PYBIND11_MODULE(_sdr_signal_analyzer, module) {
       .def_readwrite("display_samples", &ProcessingConfig::display_samples)
       .def_readwrite("averaging_factor", &ProcessingConfig::averaging_factor)
       .def_readwrite("peak_hold_enabled", &ProcessingConfig::peak_hold_enabled)
-      .def_readwrite("detection_threshold_db", &ProcessingConfig::detection_threshold_db)
+      .def_readwrite("detection_threshold_db",
+                     &ProcessingConfig::detection_threshold_db)
       .def_readwrite("max_peaks", &ProcessingConfig::max_peaks)
-      .def_readwrite("minimum_peak_spacing_bins", &ProcessingConfig::minimum_peak_spacing_bins)
-      .def_readwrite("bandwidth_threshold_db", &ProcessingConfig::bandwidth_threshold_db);
+      .def_readwrite("minimum_peak_spacing_bins",
+                     &ProcessingConfig::minimum_peak_spacing_bins)
+      .def_readwrite("bandwidth_threshold_db",
+                     &ProcessingConfig::bandwidth_threshold_db);
 
   py::class_<RecordingConfig>(module, "RecordingConfig")
       .def(py::init<>())
@@ -68,7 +71,8 @@ PYBIND11_MODULE(_sdr_signal_analyzer, module) {
 
   py::class_<DetectionResult>(module, "DetectionResult")
       .def(py::init<>())
-      .def_readonly("center_frequency_hz", &DetectionResult::center_frequency_hz)
+      .def_readonly("center_frequency_hz",
+                    &DetectionResult::center_frequency_hz)
       .def_readonly("offset_hz", &DetectionResult::offset_hz)
       .def_readonly("peak_power_dbfs", &DetectionResult::peak_power_dbfs)
       .def_readonly("bandwidth_hz", &DetectionResult::bandwidth_hz)
@@ -76,10 +80,12 @@ PYBIND11_MODULE(_sdr_signal_analyzer, module) {
 
   py::class_<MarkerMeasurement>(module, "MarkerMeasurement")
       .def(py::init<>())
-      .def_readonly("center_frequency_hz", &MarkerMeasurement::center_frequency_hz)
+      .def_readonly("center_frequency_hz",
+                    &MarkerMeasurement::center_frequency_hz)
       .def_readonly("bandwidth_hz", &MarkerMeasurement::bandwidth_hz)
       .def_readonly("peak_power_dbfs", &MarkerMeasurement::peak_power_dbfs)
-      .def_readonly("average_power_dbfs", &MarkerMeasurement::average_power_dbfs);
+      .def_readonly("average_power_dbfs",
+                    &MarkerMeasurement::average_power_dbfs);
 
   py::class_<AnalysisReport>(module, "AnalysisReport")
       .def(py::init<>())
@@ -87,7 +93,8 @@ PYBIND11_MODULE(_sdr_signal_analyzer, module) {
       .def_readonly("strongest_peak_dbfs", &AnalysisReport::strongest_peak_dbfs)
       .def_readonly("burst_score", &AnalysisReport::burst_score)
       .def_readonly("detections", &AnalysisReport::detections)
-      .def_readonly("marker_measurements", &AnalysisReport::marker_measurements);
+      .def_readonly("marker_measurements",
+                    &AnalysisReport::marker_measurements);
 
   py::class_<SpectrumFrame>(module, "SpectrumFrame")
       .def(py::init<>())
@@ -123,13 +130,16 @@ PYBIND11_MODULE(_sdr_signal_analyzer, module) {
       .def_readonly("recording", &SessionStatus::recording);
 
   py::class_<AnalyzerSession>(module, "AnalyzerSession")
-      .def(py::init<SourceConfig, ProcessingConfig>(), py::arg("source_config") = SourceConfig{}, py::arg("processing_config") = ProcessingConfig{})
+      .def(py::init<SourceConfig, ProcessingConfig>(),
+           py::arg("source_config") = SourceConfig{},
+           py::arg("processing_config") = ProcessingConfig{})
       .def("start", &AnalyzerSession::start)
       .def("stop", &AnalyzerSession::stop)
       .def("is_running", &AnalyzerSession::is_running)
       .def("status", &AnalyzerSession::status)
       .def("update_source_config", &AnalyzerSession::update_source_config)
-      .def("update_processing_config", &AnalyzerSession::update_processing_config)
+      .def("update_processing_config",
+           &AnalyzerSession::update_processing_config)
       .def("start_recording", &AnalyzerSession::start_recording)
       .def("stop_recording", &AnalyzerSession::stop_recording)
       .def("poll_snapshot", &AnalyzerSession::poll_snapshot)

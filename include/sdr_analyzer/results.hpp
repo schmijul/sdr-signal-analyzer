@@ -69,4 +69,4 @@ struct SessionStatus {
   std::optional<RecordingStatus> recording;
 };
 
-}  // namespace sdr_analyzer
+} // namespace sdr_analyzer

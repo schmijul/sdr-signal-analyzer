@@ -23,7 +23,7 @@ using sdr_analyzer::ProcessingConfig;
 using sdr_analyzer::SourceConfig;
 using sdr_analyzer::SourceKind;
 
-void Require(const bool condition, const std::string& message) {
+void Require(const bool condition, const std::string &message) {
   if (!condition) {
     throw std::runtime_error(message);
   }
@@ -38,14 +38,15 @@ std::vector<std::uint8_t> BuildToneIq8(const std::size_t sample_count) {
     const double i = 127.5 + 80.0 * std::cos(phase);
     const double q = 127.5 + 80.0 * std::sin(phase);
     bytes[index * 2U] = static_cast<std::uint8_t>(std::clamp(i, 0.0, 255.0));
-    bytes[index * 2U + 1U] = static_cast<std::uint8_t>(std::clamp(q, 0.0, 255.0));
+    bytes[index * 2U + 1U] =
+        static_cast<std::uint8_t>(std::clamp(q, 0.0, 255.0));
     phase += delta;
   }
   return bytes;
 }
 
 class MockRtlTcpServer {
- public:
+public:
   MockRtlTcpServer() = default;
   ~MockRtlTcpServer() { Stop(); }
 
@@ -58,12 +59,13 @@ class MockRtlTcpServer {
     int reuse = 1;
     ::setsockopt(listen_fd_, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse));
 
-    sockaddr_in address {};
+    sockaddr_in address{};
     address.sin_family = AF_INET;
     address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
     address.sin_port = 0;
 
-    if (::bind(listen_fd_, reinterpret_cast<sockaddr*>(&address), sizeof(address)) != 0) {
+    if (::bind(listen_fd_, reinterpret_cast<sockaddr *>(&address),
+               sizeof(address)) != 0) {
       throw std::runtime_error("Failed to bind mock server.");
     }
     if (::listen(listen_fd_, 1) != 0) {
@@ -71,7 +73,8 @@ class MockRtlTcpServer {
     }
 
     socklen_t length = sizeof(address);
-    if (::getsockname(listen_fd_, reinterpret_cast<sockaddr*>(&address), &length) != 0) {
+    if (::getsockname(listen_fd_, reinterpret_cast<sockaddr *>(&address),
+                      &length) != 0) {
       throw std::runtime_error("Failed to get mock server port.");
     }
     port_ = ntohs(address.sin_port);
@@ -98,20 +101,22 @@ class MockRtlTcpServer {
     }
   }
 
- private:
+private:
   void Serve() {
     client_fd_ = ::accept(listen_fd_, nullptr, nullptr);
     if (client_fd_ < 0) {
       return;
     }
 
-    const std::uint8_t header[12] = {'R', 'T', 'L', '0', 0, 0, 0, 1, 0, 0, 0, 16};
+    const std::uint8_t header[12] = {'R', 'T', 'L', '0', 0, 0,
+                                     0,   1,   0,   0,   0, 16};
     ::send(client_fd_, header, sizeof(header), 0);
 
     std::uint8_t command_buffer[25] = {};
     std::size_t command_bytes = 0;
     while (command_bytes < sizeof(command_buffer) && running_) {
-      const auto received = ::recv(client_fd_, command_buffer + command_bytes, sizeof(command_buffer) - command_bytes, 0);
+      const auto received = ::recv(client_fd_, command_buffer + command_bytes,
+                                   sizeof(command_buffer) - command_bytes, 0);
       if (received <= 0) {
         return;
       }
@@ -152,14 +157,16 @@ void TestRtlTcpSession() {
   processing.fft_size = 2048;
 
   AnalyzerSession session(source, processing);
-  Require(session.start(), "rtl_tcp session failed to start: " + session.last_error());
+  Require(session.start(),
+          "rtl_tcp session failed to start: " + session.last_error());
 
   bool got_snapshot = false;
   for (int attempt = 0; attempt < 40; ++attempt) {
     auto snapshot = session.poll_snapshot();
     if (snapshot) {
       got_snapshot = true;
-      Require(!snapshot->spectrum.power_dbfs.empty(), "Expected spectrum data from rtl_tcp source.");
+      Require(!snapshot->spectrum.power_dbfs.empty(),
+              "Expected spectrum data from rtl_tcp source.");
       break;
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(25));
@@ -171,12 +178,12 @@ void TestRtlTcpSession() {
   Require(got_snapshot, "Did not receive a snapshot from rtl_tcp source.");
 }
 
-}  // namespace
+} // namespace
 
 int main() {
   try {
     TestRtlTcpSession();
-  } catch (const std::exception& ex) {
+  } catch (const std::exception &ex) {
     std::cerr << ex.what() << "\n";
     return 1;
   }

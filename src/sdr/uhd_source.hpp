@@ -6,4 +6,4 @@ namespace sdr_analyzer::sdr {
 
 std::unique_ptr<ISampleSource> CreateUhdSource();
 
-}  // namespace sdr_analyzer::sdr
+} // namespace sdr_analyzer::sdr

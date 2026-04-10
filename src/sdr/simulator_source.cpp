@@ -7,11 +7,12 @@ namespace {
 
 constexpr double kTwoPi = 6.28318530717958647692;
 
-}  // namespace
+} // namespace
 
 SimulatorSource::SimulatorSource() : rng_(0x534452u) {}
 
-bool SimulatorSource::Configure(const SourceConfig& config, std::string& error) {
+bool SimulatorSource::Configure(const SourceConfig &config,
+                                std::string &error) {
   if (config.sample_rate_hz <= 0.0) {
     error = "Sample rate must be positive.";
     return false;
@@ -24,17 +25,17 @@ bool SimulatorSource::Configure(const SourceConfig& config, std::string& error) 
   return true;
 }
 
-bool SimulatorSource::Start(std::string& /*error*/) {
+bool SimulatorSource::Start(std::string & /*error*/) {
   running_ = true;
   return true;
 }
 
 void SimulatorSource::Stop() { running_ = false; }
 
-std::size_t SimulatorSource::ReadSamples(
-    std::vector<std::complex<float>>& output,
-    const std::size_t max_samples,
-    std::string& error) {
+std::size_t
+SimulatorSource::ReadSamples(std::vector<std::complex<float>> &output,
+                             const std::size_t max_samples,
+                             std::string &error) {
   if (!running_) {
     error = "Simulator source is not running.";
     return 0;
@@ -48,7 +49,8 @@ std::size_t SimulatorSource::ReadSamples(
   for (std::size_t index = 0; index < max_samples; ++index) {
     const bool burst_on = ((sample_cursor_ / 4096U) % 10U) < 2U;
     const float fm_like =
-        0.45f * std::sin(static_cast<float>(phase_a_ + 1.8 * std::sin(sample_cursor_ * 0.0009)));
+        0.45f * std::sin(static_cast<float>(
+                    phase_a_ + 1.8 * std::sin(sample_cursor_ * 0.0009)));
     const std::complex<float> tone_b(
         0.22f * std::cos(static_cast<float>(phase_b_)),
         0.22f * std::sin(static_cast<float>(phase_b_)));
@@ -56,8 +58,9 @@ std::size_t SimulatorSource::ReadSamples(
         burst_on ? 0.38f * std::cos(static_cast<float>(burst_phase_)) : 0.0f,
         burst_on ? 0.38f * std::sin(static_cast<float>(burst_phase_)) : 0.0f);
     output[index] =
-        std::complex<float>(fm_like, 0.32f * std::cos(static_cast<float>(phase_a_ * 0.6))) + tone_b + burst +
-        std::complex<float>(noise_(rng_), noise_(rng_));
+        std::complex<float>(
+            fm_like, 0.32f * std::cos(static_cast<float>(phase_a_ * 0.6))) +
+        tone_b + burst + std::complex<float>(noise_(rng_), noise_(rng_));
 
     phase_a_ = std::fmod(phase_a_ + delta_a, kTwoPi);
     phase_b_ = std::fmod(phase_b_ + delta_b, kTwoPi);
@@ -70,4 +73,4 @@ std::size_t SimulatorSource::ReadSamples(
 
 std::string SimulatorSource::Description() const { return "Simulator source"; }
 
-}  // namespace sdr_analyzer::sdr
+} // namespace sdr_analyzer::sdr

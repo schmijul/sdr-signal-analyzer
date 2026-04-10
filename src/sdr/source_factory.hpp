@@ -7,6 +7,7 @@
 
 namespace sdr_analyzer::sdr {
 
-std::unique_ptr<ISampleSource> CreateSource(const SourceConfig& config, std::string& error);
+std::unique_ptr<ISampleSource> CreateSource(const SourceConfig &config,
+                                            std::string &error);
 
-}  // namespace sdr_analyzer::sdr
+} // namespace sdr_analyzer::sdr

@@ -2,7 +2,12 @@ from __future__ import annotations
 
 import time
 
-from sdr_signal_analyzer import AnalyzerSession, ProcessingConfig, SourceConfig, SourceKind
+from sdr_signal_analyzer import (
+    AnalyzerSession,
+    ProcessingConfig,
+    SourceConfig,
+    SourceKind,
+)
 
 
 def main() -> int:

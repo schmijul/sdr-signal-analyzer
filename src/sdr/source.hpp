@@ -10,17 +10,16 @@
 namespace sdr_analyzer::sdr {
 
 class ISampleSource {
- public:
+public:
   virtual ~ISampleSource() = default;
 
-  virtual bool Configure(const SourceConfig& config, std::string& error) = 0;
-  virtual bool Start(std::string& error) = 0;
+  virtual bool Configure(const SourceConfig &config, std::string &error) = 0;
+  virtual bool Start(std::string &error) = 0;
   virtual void Stop() = 0;
-  virtual std::size_t ReadSamples(
-      std::vector<std::complex<float>>& output,
-      std::size_t max_samples,
-      std::string& error) = 0;
+  virtual std::size_t ReadSamples(std::vector<std::complex<float>> &output,
+                                  std::size_t max_samples,
+                                  std::string &error) = 0;
   virtual std::string Description() const = 0;
 };
 
-}  // namespace sdr_analyzer::sdr
+} // namespace sdr_analyzer::sdr

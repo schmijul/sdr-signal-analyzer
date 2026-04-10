@@ -6,8 +6,8 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include <cstdint>
 #include <cerrno>
+#include <cstdint>
 #include <cstring>
 #include <vector>
 
@@ -20,17 +20,17 @@ constexpr std::uint8_t kCommandSetGainMode = 0x03;
 constexpr std::uint8_t kCommandSetGain = 0x04;
 constexpr std::uint8_t kCommandSetAgcMode = 0x08;
 
-std::string SocketErrorText(const std::string& prefix) {
+std::string SocketErrorText(const std::string &prefix) {
   return prefix + ": " + std::strerror(errno);
 }
 
-}  // namespace
+} // namespace
 
 RtlTcpSource::RtlTcpSource() = default;
 
 RtlTcpSource::~RtlTcpSource() { Stop(); }
 
-bool RtlTcpSource::Configure(const SourceConfig& config, std::string& error) {
+bool RtlTcpSource::Configure(const SourceConfig &config, std::string &error) {
   if (config.network_host.empty()) {
     error = "rtl_tcp source requires a network host.";
     return false;
@@ -46,7 +46,7 @@ bool RtlTcpSource::Configure(const SourceConfig& config, std::string& error) {
   return true;
 }
 
-bool RtlTcpSource::Start(std::string& error) {
+bool RtlTcpSource::Start(std::string &error) {
   if (active_) {
     return true;
   }
@@ -66,10 +66,9 @@ void RtlTcpSource::Stop() {
   CloseSocket();
 }
 
-std::size_t RtlTcpSource::ReadSamples(
-    std::vector<std::complex<float>>& output,
-    const std::size_t max_samples,
-    std::string& error) {
+std::size_t RtlTcpSource::ReadSamples(std::vector<std::complex<float>> &output,
+                                      const std::size_t max_samples,
+                                      std::string &error) {
   if (!active_ || socket_fd_ < 0) {
     error = "rtl_tcp socket is not active.";
     return 0;
@@ -83,32 +82,38 @@ std::size_t RtlTcpSource::ReadSamples(
   output.resize(max_samples);
   for (std::size_t index = 0; index < max_samples; ++index) {
     const float i = (static_cast<float>(raw[index * 2U]) - 127.5f) / 127.5f;
-    const float q = (static_cast<float>(raw[index * 2U + 1U]) - 127.5f) / 127.5f;
+    const float q =
+        (static_cast<float>(raw[index * 2U + 1U]) - 127.5f) / 127.5f;
     output[index] = std::complex<float>(i, q);
   }
   return output.size();
 }
 
 std::string RtlTcpSource::Description() const {
-  return "rtl_tcp source: " + config_.network_host + ":" + std::to_string(config_.network_port);
+  return "rtl_tcp source: " + config_.network_host + ":" +
+         std::to_string(config_.network_port);
 }
 
-bool RtlTcpSource::Connect(std::string& error) {
+bool RtlTcpSource::Connect(std::string &error) {
   struct addrinfo hints {};
   hints.ai_family = AF_UNSPEC;
   hints.ai_socktype = SOCK_STREAM;
 
-  struct addrinfo* results = nullptr;
+  struct addrinfo *results = nullptr;
   const auto port_text = std::to_string(config_.network_port);
-  const int resolve_status = getaddrinfo(config_.network_host.c_str(), port_text.c_str(), &hints, &results);
+  const int resolve_status = getaddrinfo(config_.network_host.c_str(),
+                                         port_text.c_str(), &hints, &results);
   if (resolve_status != 0) {
-    error = std::string("Failed to resolve rtl_tcp host: ") + gai_strerror(resolve_status);
+    error = std::string("Failed to resolve rtl_tcp host: ") +
+            gai_strerror(resolve_status);
     return false;
   }
 
   bool connected = false;
-  for (auto* candidate = results; candidate != nullptr; candidate = candidate->ai_next) {
-    socket_fd_ = ::socket(candidate->ai_family, candidate->ai_socktype, candidate->ai_protocol);
+  for (auto *candidate = results; candidate != nullptr;
+       candidate = candidate->ai_next) {
+    socket_fd_ = ::socket(candidate->ai_family, candidate->ai_socktype,
+                          candidate->ai_protocol);
     if (socket_fd_ < 0) {
       continue;
     }
@@ -139,19 +144,23 @@ bool RtlTcpSource::Connect(std::string& error) {
   return true;
 }
 
-bool RtlTcpSource::ApplyTunerConfig(std::string& error) {
-  const auto center_hz = static_cast<std::uint32_t>(config_.center_frequency_hz);
-  const auto sample_rate_hz = static_cast<std::uint32_t>(config_.sample_rate_hz);
+bool RtlTcpSource::ApplyTunerConfig(std::string &error) {
+  const auto center_hz =
+      static_cast<std::uint32_t>(config_.center_frequency_hz);
+  const auto sample_rate_hz =
+      static_cast<std::uint32_t>(config_.sample_rate_hz);
   const auto gain_tenths_db = static_cast<std::int32_t>(config_.gain_db * 10.0);
 
   return SendCommand(kCommandSetSampleRate, sample_rate_hz, error) &&
          SendCommand(kCommandSetFrequency, center_hz, error) &&
          SendCommand(kCommandSetAgcMode, 0U, error) &&
          SendCommand(kCommandSetGainMode, 1U, error) &&
-         SendCommand(kCommandSetGain, static_cast<std::uint32_t>(gain_tenths_db), error);
+         SendCommand(kCommandSetGain,
+                     static_cast<std::uint32_t>(gain_tenths_db), error);
 }
 
-bool RtlTcpSource::SendCommand(const std::uint8_t command, const std::uint32_t value, std::string& error) {
+bool RtlTcpSource::SendCommand(const std::uint8_t command,
+                               const std::uint32_t value, std::string &error) {
   if (socket_fd_ < 0) {
     error = "rtl_tcp socket is not connected.";
     return false;
@@ -168,11 +177,13 @@ bool RtlTcpSource::SendCommand(const std::uint8_t command, const std::uint32_t v
   return true;
 }
 
-bool RtlTcpSource::ReadExact(void* buffer, const std::size_t length, std::string& error) {
-  auto* output = static_cast<std::uint8_t*>(buffer);
+bool RtlTcpSource::ReadExact(void *buffer, const std::size_t length,
+                             std::string &error) {
+  auto *output = static_cast<std::uint8_t *>(buffer);
   std::size_t received_total = 0;
   while (received_total < length) {
-    const auto received = ::recv(socket_fd_, output + received_total, length - received_total, 0);
+    const auto received =
+        ::recv(socket_fd_, output + received_total, length - received_total, 0);
     if (received == 0) {
       error = "rtl_tcp server closed the connection.";
       return false;
@@ -193,4 +204,4 @@ void RtlTcpSource::CloseSocket() {
   }
 }
 
-}  // namespace sdr_analyzer::sdr
+} // namespace sdr_analyzer::sdr

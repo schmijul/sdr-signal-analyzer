@@ -17,10 +17,10 @@ namespace sdr_analyzer::sdr {
 namespace {
 
 class UhdSource final : public ISampleSource {
- public:
+public:
   ~UhdSource() override { Stop(); }
 
-  bool Configure(const SourceConfig& config, std::string& error) override {
+  bool Configure(const SourceConfig &config, std::string &error) override {
     config_ = config;
     if (!usrp_) {
       return true;
@@ -28,11 +28,11 @@ class UhdSource final : public ISampleSource {
     return ApplyConfig(error);
   }
 
-  bool Start(std::string& error) override {
+  bool Start(std::string &error) override {
     if (!usrp_) {
       try {
         usrp_ = uhd::usrp::multi_usrp::make(config_.device_args);
-      } catch (const std::exception& ex) {
+      } catch (const std::exception &ex) {
         error = ex.what();
         return false;
       }
@@ -58,7 +58,7 @@ class UhdSource final : public ISampleSource {
     command.num_samps = 0;
     try {
       rx_stream_->issue_stream_cmd(command);
-    } catch (const std::exception& ex) {
+    } catch (const std::exception &ex) {
       error = ex.what();
       return false;
     }
@@ -70,7 +70,8 @@ class UhdSource final : public ISampleSource {
   void Stop() override {
     if (rx_stream_) {
       try {
-        uhd::stream_cmd_t command(uhd::stream_cmd_t::STREAM_MODE_STOP_CONTINUOUS);
+        uhd::stream_cmd_t command(
+            uhd::stream_cmd_t::STREAM_MODE_STOP_CONTINUOUS);
         command.stream_now = true;
         rx_stream_->issue_stream_cmd(command);
       } catch (...) {
@@ -81,10 +82,9 @@ class UhdSource final : public ISampleSource {
     active_ = false;
   }
 
-  std::size_t ReadSamples(
-      std::vector<std::complex<float>>& output,
-      const std::size_t max_samples,
-      std::string& error) override {
+  std::size_t ReadSamples(std::vector<std::complex<float>> &output,
+                          const std::size_t max_samples,
+                          std::string &error) override {
     if (!active_ || !usrp_ || !rx_stream_) {
       error = "UHD stream is not active.";
       return 0;
@@ -92,12 +92,8 @@ class UhdSource final : public ISampleSource {
 
     output.resize(max_samples);
     uhd::rx_metadata_t metadata;
-    const auto received = rx_stream_->recv(
-        output.data(),
-        max_samples,
-        metadata,
-        0.25,
-        false);
+    const auto received =
+        rx_stream_->recv(output.data(), max_samples, metadata, 0.25, false);
     if (metadata.error_code == uhd::rx_metadata_t::ERROR_CODE_TIMEOUT) {
       error = "Timed out waiting for UHD samples.";
       return 0;
@@ -111,11 +107,12 @@ class UhdSource final : public ISampleSource {
   }
 
   std::string Description() const override {
-    return config_.device_args.empty() ? "UHD USRP device" : "UHD USRP: " + config_.device_args;
+    return config_.device_args.empty() ? "UHD USRP device"
+                                       : "UHD USRP: " + config_.device_args;
   }
 
- private:
-  bool ApplyConfig(std::string& error) {
+private:
+  bool ApplyConfig(std::string &error) {
     try {
       if (!config_.clock_source.empty()) {
         usrp_->set_clock_source(config_.clock_source);
@@ -124,7 +121,8 @@ class UhdSource final : public ISampleSource {
         usrp_->set_time_source(config_.time_source);
       }
       usrp_->set_rx_rate(config_.sample_rate_hz, config_.channel);
-      usrp_->set_rx_freq(uhd::tune_request_t(config_.center_frequency_hz), config_.channel);
+      usrp_->set_rx_freq(uhd::tune_request_t(config_.center_frequency_hz),
+                         config_.channel);
       usrp_->set_rx_gain(config_.gain_db, config_.channel);
       if (config_.bandwidth_hz > 0.0) {
         usrp_->set_rx_bandwidth(config_.bandwidth_hz, config_.channel);
@@ -132,7 +130,7 @@ class UhdSource final : public ISampleSource {
       if (!config_.antenna.empty()) {
         usrp_->set_rx_antenna(config_.antenna, config_.channel);
       }
-    } catch (const std::exception& ex) {
+    } catch (const std::exception &ex) {
       error = ex.what();
       return false;
     }
@@ -145,12 +143,12 @@ class UhdSource final : public ISampleSource {
   bool active_ = false;
 };
 
-}  // namespace
+} // namespace
 
 std::unique_ptr<ISampleSource> CreateUhdSource() {
   return std::make_unique<UhdSource>();
 }
 
-}  // namespace sdr_analyzer::sdr
+} // namespace sdr_analyzer::sdr
 
 #endif

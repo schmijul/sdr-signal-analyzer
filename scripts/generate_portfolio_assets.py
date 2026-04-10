@@ -7,7 +7,9 @@ from pathlib import Path
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Generate a deterministic GUI screenshot for the README.")
+    parser = argparse.ArgumentParser(
+        description="Generate a deterministic GUI screenshot for the README."
+    )
     parser.add_argument("--output", required=True)
     parser.add_argument("--center-hz", type=float, required=True)
     parser.add_argument("--sample-rate", type=float, required=True)

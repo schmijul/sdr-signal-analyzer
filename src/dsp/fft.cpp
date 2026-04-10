@@ -16,12 +16,13 @@ std::vector<float> HannWindow(const std::size_t size) {
   }
   constexpr double kTwoPi = 6.28318530717958647692;
   for (std::size_t index = 0; index < size; ++index) {
-    window[index] = static_cast<float>(0.5 - 0.5 * std::cos(kTwoPi * index / static_cast<double>(size - 1)));
+    window[index] = static_cast<float>(
+        0.5 - 0.5 * std::cos(kTwoPi * index / static_cast<double>(size - 1)));
   }
   return window;
 }
 
-void ComputeFft(std::vector<std::complex<float>>& data) {
+void ComputeFft(std::vector<std::complex<float>> &data) {
   const std::size_t count = data.size();
   if (!IsPowerOfTwo(count)) {
     throw std::invalid_argument("FFT size must be a power of two.");
@@ -43,9 +44,8 @@ void ComputeFft(std::vector<std::complex<float>>& data) {
   constexpr double kTwoPi = 6.28318530717958647692;
   for (std::size_t len = 2; len <= count; len <<= 1U) {
     const double angle = -kTwoPi / static_cast<double>(len);
-    const std::complex<float> step(
-        static_cast<float>(std::cos(angle)),
-        static_cast<float>(std::sin(angle)));
+    const std::complex<float> step(static_cast<float>(std::cos(angle)),
+                                   static_cast<float>(std::sin(angle)));
     for (std::size_t offset = 0; offset < count; offset += len) {
       std::complex<float> omega(1.0f, 0.0f);
       const std::size_t half = len >> 1U;
@@ -60,4 +60,4 @@ void ComputeFft(std::vector<std::complex<float>>& data) {
   }
 }
 
-}  // namespace sdr_analyzer::dsp
+} // namespace sdr_analyzer::dsp

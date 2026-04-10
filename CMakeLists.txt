@@ -72,11 +72,19 @@ if(SDR_ANALYZER_BUILD_PYTHON AND pybind11_FOUND AND Python3_FOUND)
   target_link_libraries(_sdr_signal_analyzer PRIVATE sdr_analyzer)
   target_include_directories(_sdr_signal_analyzer PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
-  set_target_properties(
-    _sdr_signal_analyzer
-    PROPERTIES
-      LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/python/sdr_signal_analyzer
-  )
+  if(SKBUILD)
+    install(
+      TARGETS _sdr_signal_analyzer
+      LIBRARY DESTINATION sdr_signal_analyzer
+      RUNTIME DESTINATION sdr_signal_analyzer
+    )
+  else()
+    set_target_properties(
+      _sdr_signal_analyzer
+      PROPERTIES
+        LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/python/sdr_signal_analyzer
+    )
+  endif()
 endif()
 
 enable_testing()

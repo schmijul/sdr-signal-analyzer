@@ -1,0 +1,32 @@
+site_name: SDR Signal Analyzer
+site_description: C++-first SDR spectrum analyzer with a Python GUI, replay tooling, and optional live SDR backends.
+site_url: https://schmijul.github.io/sdr-signal-analyzer/
+repo_url: https://github.com/schmijul/sdr-signal-analyzer
+repo_name: schmijul/sdr-signal-analyzer
+
+theme:
+  name: material
+  features:
+    - content.code.copy
+    - navigation.instant
+    - navigation.sections
+    - navigation.top
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - tables
+  - toc:
+      permalink: true
+
+nav:
+  - Overview: index.md
+  - Architecture: architecture.md
+  - Public API: api.md
+  - Replay and Recording: replay-and-recording.md
+  - Testing and Validation: testing.md
+  - Source Guides:
+      - Overview: sources/index.md
+      - rtl_tcp: sources/rtltcp.md
+      - UHD / USRP: sources/uhd.md
+  - Case Studies: case-studies.md

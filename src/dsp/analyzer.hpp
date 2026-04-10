@@ -9,18 +9,16 @@
 namespace sdr_analyzer::dsp {
 
 class Analyzer {
- public:
+public:
   explicit Analyzer(ProcessingConfig config = {});
 
-  void UpdateConfig(const ProcessingConfig& config);
-  AnalyzerSnapshot Process(
-      std::uint64_t sequence,
-      double center_frequency_hz,
-      double sample_rate_hz,
-      const std::vector<std::complex<float>>& iq_samples,
-      const std::vector<Marker>& markers);
+  void UpdateConfig(const ProcessingConfig &config);
+  AnalyzerSnapshot Process(std::uint64_t sequence, double center_frequency_hz,
+                           double sample_rate_hz,
+                           const std::vector<std::complex<float>> &iq_samples,
+                           const std::vector<Marker> &markers);
 
- private:
+private:
   ProcessingConfig config_;
   std::vector<float> window_;
   std::vector<double> averaged_power_;
@@ -29,4 +27,4 @@ class Analyzer {
   void EnsureState();
 };
 
-}  // namespace sdr_analyzer::dsp
+} // namespace sdr_analyzer::dsp

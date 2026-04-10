@@ -66,4 +66,4 @@ struct ReplayConfig {
   bool loop = false;
 };
 
-}  // namespace sdr_analyzer
+} // namespace sdr_analyzer

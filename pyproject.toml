@@ -5,15 +5,61 @@ build-backend = "scikit_build_core.build"
 [project]
 name = "sdr-signal-analyzer"
 version = "0.1.0"
-description = "C++-first SDR spectrum analyzer with Python GUI."
+description = "C++-first SDR spectrum analyzer with a Python GUI, replay tooling, and optional live SDR backends."
 readme = "README.md"
 requires-python = ">=3.10"
+authors = [
+  { name = "schmijul", email = "julianschmidtbewerbung@gmail.com" },
+]
 dependencies = []
+keywords = [
+  "sdr",
+  "spectrum-analyzer",
+  "rtl-sdr",
+  "usrp",
+  "uhd",
+  "soapy",
+  "sigmf",
+  "dsp",
+  "radio",
+]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Science/Research",
+  "Programming Language :: C++",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Communications :: Ham Radio",
+  "Topic :: Scientific/Engineering",
+  "Topic :: Scientific/Engineering :: Information Analysis",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+]
 
 [project.optional-dependencies]
 gui = [
   "PySide6>=6.7",
 ]
+dev = [
+  "black>=24.4",
+  "build>=1.2",
+  "isort>=5.13",
+  "mkdocs>=1.6",
+  "mkdocs-material>=9.5",
+  "pre-commit>=3.7",
+  "twine>=5.1",
+]
+
+[project.urls]
+Homepage = "https://github.com/schmijul/sdr-signal-analyzer"
+Documentation = "https://schmijul.github.io/sdr-signal-analyzer/"
+Source = "https://github.com/schmijul/sdr-signal-analyzer"
+Issues = "https://github.com/schmijul/sdr-signal-analyzer/issues"
+Changelog = "https://github.com/schmijul/sdr-signal-analyzer/blob/main/CHANGELOG.md"
+Releases = "https://github.com/schmijul/sdr-signal-analyzer/releases"
 
 [project.scripts]
 sdr-signal-analyzer-gui = "sdr_signal_analyzer.gui:main"
@@ -21,3 +67,17 @@ sdr-signal-analyzer-gui = "sdr_signal_analyzer.gui:main"
 [tool.scikit-build]
 cmake.build-type = "Release"
 wheel.packages = ["python/sdr_signal_analyzer"]
+
+[tool.black]
+target-version = ["py310", "py311", "py312"]
+
+[tool.isort]
+profile = "black"
+
+[tool.cibuildwheel]
+build = "cp310-* cp311-* cp312-*"
+skip = "pp* *-musllinux* *_i686"
+test-command = "python -c \"from sdr_signal_analyzer import AnalyzerSession, ProcessingConfig, SourceConfig, SourceKind; print(SourceKind.SIMULATOR)\""
+
+[tool.cibuildwheel.environment]
+CMAKE_ARGS = "-DSDR_ANALYZER_ENABLE_SOAPYSDR=OFF -DSDR_ANALYZER_ENABLE_UHD=OFF"

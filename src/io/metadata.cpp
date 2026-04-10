@@ -11,7 +11,8 @@
 namespace sdr_analyzer::io {
 namespace {
 
-std::optional<double> ExtractNumber(const std::string& content, const std::string& key) {
+std::optional<double> ExtractNumber(const std::string &content,
+                                    const std::string &key) {
   const std::regex pattern("\"" + key + "\"\\s*:\\s*([-0-9.eE+]+)");
   std::smatch match;
   if (!std::regex_search(content, match, pattern)) {
@@ -20,7 +21,8 @@ std::optional<double> ExtractNumber(const std::string& content, const std::strin
   return std::stod(match[1].str());
 }
 
-std::optional<std::string> ExtractString(const std::string& content, const std::string& key) {
+std::optional<std::string> ExtractString(const std::string &content,
+                                         const std::string &key) {
   const std::regex pattern("\"" + key + "\"\\s*:\\s*\"([^\"]+)\"");
   std::smatch match;
   if (!std::regex_search(content, match, pattern)) {
@@ -29,7 +31,8 @@ std::optional<std::string> ExtractString(const std::string& content, const std::
   return match[1].str();
 }
 
-bool ReadFile(const std::string& path, std::string& content, std::string& error) {
+bool ReadFile(const std::string &path, std::string &content,
+              std::string &error) {
   std::ifstream file(path);
   if (!file) {
     error = "Failed to open metadata file: " + path;
@@ -41,7 +44,8 @@ bool ReadFile(const std::string& path, std::string& content, std::string& error)
   return true;
 }
 
-bool WriteText(const std::string& path, const std::string& content, std::string& error) {
+bool WriteText(const std::string &path, const std::string &content,
+               std::string &error) {
   std::ofstream file(path);
   if (!file) {
     error = "Failed to write file: " + path;
@@ -51,19 +55,19 @@ bool WriteText(const std::string& path, const std::string& content, std::string&
   return static_cast<bool>(file);
 }
 
-}  // namespace
+} // namespace
 
 std::string SampleFormatToString(const SampleFormat format) {
   switch (format) {
-    case SampleFormat::kComplexFloat32:
-      return "cf32_le";
-    case SampleFormat::kComplexInt16:
-      return "ci16_le";
+  case SampleFormat::kComplexFloat32:
+    return "cf32_le";
+  case SampleFormat::kComplexInt16:
+    return "ci16_le";
   }
   return "cf32_le";
 }
 
-std::optional<SampleFormat> SampleFormatFromString(const std::string& text) {
+std::optional<SampleFormat> SampleFormatFromString(const std::string &text) {
   if (text == "cf32_le") {
     return SampleFormat::kComplexFloat32;
   }
@@ -87,20 +91,24 @@ std::string CurrentUtcTimestamp() {
   return stream.str();
 }
 
-bool WriteRawMetadata(const std::string& path, const SourceConfig& source_config, std::string& error) {
+bool WriteRawMetadata(const std::string &path,
+                      const SourceConfig &source_config, std::string &error) {
   std::ostringstream content;
   content << "{\n"
           << "  \"sample_rate_hz\": " << source_config.sample_rate_hz << ",\n"
-          << "  \"center_frequency_hz\": " << source_config.center_frequency_hz << ",\n"
+          << "  \"center_frequency_hz\": " << source_config.center_frequency_hz
+          << ",\n"
           << "  \"gain_db\": " << source_config.gain_db << ",\n"
           << "  \"frame_samples\": " << source_config.frame_samples << ",\n"
-          << "  \"sample_format\": \"" << SampleFormatToString(source_config.sample_format) << "\",\n"
+          << "  \"sample_format\": \""
+          << SampleFormatToString(source_config.sample_format) << "\",\n"
           << "  \"capture_start_utc\": \"" << CurrentUtcTimestamp() << "\"\n"
           << "}\n";
   return WriteText(path, content.str(), error);
 }
 
-bool ReadRawMetadata(const std::string& path, SourceConfig& source_config, std::string& error) {
+bool ReadRawMetadata(const std::string &path, SourceConfig &source_config,
+                     std::string &error) {
   std::string content;
   if (!ReadFile(path, content, error)) {
     return false;
@@ -126,17 +134,21 @@ bool ReadRawMetadata(const std::string& path, SourceConfig& source_config, std::
   return true;
 }
 
-bool WriteSigmfMetadata(const std::string& path, const SourceConfig& source_config, std::string& error) {
+bool WriteSigmfMetadata(const std::string &path,
+                        const SourceConfig &source_config, std::string &error) {
   std::ostringstream content;
   content << "{\n"
           << "  \"global\": {\n"
-          << "    \"core:datatype\": \"" << SampleFormatToString(source_config.sample_format) << "\",\n"
-          << "    \"core:sample_rate\": " << source_config.sample_rate_hz << "\n"
+          << "    \"core:datatype\": \""
+          << SampleFormatToString(source_config.sample_format) << "\",\n"
+          << "    \"core:sample_rate\": " << source_config.sample_rate_hz
+          << "\n"
           << "  },\n"
           << "  \"captures\": [\n"
           << "    {\n"
           << "      \"core:sample_start\": 0,\n"
-          << "      \"core:frequency\": " << source_config.center_frequency_hz << ",\n"
+          << "      \"core:frequency\": " << source_config.center_frequency_hz
+          << ",\n"
           << "      \"core:datetime\": \"" << CurrentUtcTimestamp() << "\",\n"
           << "      \"sdr_analyzer:gain_db\": " << source_config.gain_db << "\n"
           << "    }\n"
@@ -146,7 +158,8 @@ bool WriteSigmfMetadata(const std::string& path, const SourceConfig& source_conf
   return WriteText(path, content.str(), error);
 }
 
-bool ReadSigmfMetadata(const std::string& path, SourceConfig& source_config, std::string& error) {
+bool ReadSigmfMetadata(const std::string &path, SourceConfig &source_config,
+                       std::string &error) {
   std::string content;
   if (!ReadFile(path, content, error)) {
     return false;
@@ -169,4 +182,4 @@ bool ReadSigmfMetadata(const std::string& path, SourceConfig& source_config, std
   return true;
 }
 
-}  // namespace sdr_analyzer::io
+} // namespace sdr_analyzer::io

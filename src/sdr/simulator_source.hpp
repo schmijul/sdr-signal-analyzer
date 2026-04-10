@@ -8,19 +8,17 @@
 namespace sdr_analyzer::sdr {
 
 class SimulatorSource final : public ISampleSource {
- public:
+public:
   SimulatorSource();
 
-  bool Configure(const SourceConfig& config, std::string& error) override;
-  bool Start(std::string& error) override;
+  bool Configure(const SourceConfig &config, std::string &error) override;
+  bool Start(std::string &error) override;
   void Stop() override;
-  std::size_t ReadSamples(
-      std::vector<std::complex<float>>& output,
-      std::size_t max_samples,
-      std::string& error) override;
+  std::size_t ReadSamples(std::vector<std::complex<float>> &output,
+                          std::size_t max_samples, std::string &error) override;
   std::string Description() const override;
 
- private:
+private:
   SourceConfig config_;
   bool running_ = false;
   double phase_a_ = 0.0;
@@ -31,4 +29,4 @@ class SimulatorSource final : public ISampleSource {
   std::normal_distribution<float> noise_{0.0f, 0.03f};
 };
 
-}  // namespace sdr_analyzer::sdr
+} // namespace sdr_analyzer::sdr

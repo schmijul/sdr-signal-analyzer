@@ -8,7 +8,7 @@
 namespace sdr_analyzer::sdr {
 namespace {
 
-std::string DefaultMetadataPath(const SourceConfig& config) {
+std::string DefaultMetadataPath(const SourceConfig &config) {
   const std::filesystem::path input(config.input_path);
   if (!config.metadata_path.empty()) {
     return config.metadata_path;
@@ -24,11 +24,11 @@ std::string DefaultMetadataPath(const SourceConfig& config) {
   return {};
 }
 
-}  // namespace
+} // namespace
 
 ReplaySource::ReplaySource() = default;
 
-bool ReplaySource::Configure(const SourceConfig& config, std::string& error) {
+bool ReplaySource::Configure(const SourceConfig &config, std::string &error) {
   if (config.input_path.empty()) {
     error = "Replay source requires an input file.";
     return false;
@@ -38,12 +38,16 @@ bool ReplaySource::Configure(const SourceConfig& config, std::string& error) {
   SourceConfig metadata_config = config_;
   const std::string metadata_path = DefaultMetadataPath(config_);
   const std::filesystem::path input_path(config_.input_path);
-  if (!metadata_path.empty() && !std::filesystem::exists(metadata_path) && !config_.metadata_path.empty()) {
-    error = "Replay metadata file was explicitly requested but not found: " + metadata_path;
+  if (!metadata_path.empty() && !std::filesystem::exists(metadata_path) &&
+      !config_.metadata_path.empty()) {
+    error = "Replay metadata file was explicitly requested but not found: " +
+            metadata_path;
     return false;
   }
-  if (input_path.extension() == ".sigmf-data" && !metadata_path.empty() && !std::filesystem::exists(metadata_path)) {
-    error = "SigMF replay requires a matching .sigmf-meta file: " + metadata_path;
+  if (input_path.extension() == ".sigmf-data" && !metadata_path.empty() &&
+      !std::filesystem::exists(metadata_path)) {
+    error =
+        "SigMF replay requires a matching .sigmf-meta file: " + metadata_path;
     return false;
   }
   if (!metadata_path.empty() && std::filesystem::exists(metadata_path)) {
@@ -66,7 +70,7 @@ bool ReplaySource::Configure(const SourceConfig& config, std::string& error) {
   return true;
 }
 
-bool ReplaySource::Start(std::string& error) {
+bool ReplaySource::Start(std::string &error) {
   stream_.open(config_.input_path, std::ios::binary);
   if (!stream_) {
     error = "Failed to open replay file: " + config_.input_path;
@@ -81,10 +85,9 @@ void ReplaySource::Stop() {
   }
 }
 
-std::size_t ReplaySource::ReadSamples(
-    std::vector<std::complex<float>>& output,
-    const std::size_t max_samples,
-    std::string& error) {
+std::size_t ReplaySource::ReadSamples(std::vector<std::complex<float>> &output,
+                                      const std::size_t max_samples,
+                                      std::string &error) {
   if (!stream_.is_open()) {
     error = "Replay file is not open.";
     return 0;
@@ -105,13 +108,15 @@ bool ReplaySource::Rewind() {
   return static_cast<bool>(stream_);
 }
 
-std::size_t ReplaySource::ReadComplexFloat32(
-    std::vector<std::complex<float>>& output,
-    const std::size_t max_samples,
-    std::string& error) {
+std::size_t
+ReplaySource::ReadComplexFloat32(std::vector<std::complex<float>> &output,
+                                 const std::size_t max_samples,
+                                 std::string &error) {
   std::vector<float> raw(max_samples * 2U, 0.0f);
-  stream_.read(reinterpret_cast<char*>(raw.data()), static_cast<std::streamsize>(raw.size() * sizeof(float)));
-  const auto values_read = static_cast<std::size_t>(stream_.gcount()) / sizeof(float);
+  stream_.read(reinterpret_cast<char *>(raw.data()),
+               static_cast<std::streamsize>(raw.size() * sizeof(float)));
+  const auto values_read =
+      static_cast<std::size_t>(stream_.gcount()) / sizeof(float);
   if (values_read == 0 && config_.loop_playback && Rewind()) {
     return ReadComplexFloat32(output, max_samples, error);
   }
@@ -127,13 +132,15 @@ std::size_t ReplaySource::ReadComplexFloat32(
   return output.size();
 }
 
-std::size_t ReplaySource::ReadComplexInt16(
-    std::vector<std::complex<float>>& output,
-    const std::size_t max_samples,
-    std::string& error) {
+std::size_t
+ReplaySource::ReadComplexInt16(std::vector<std::complex<float>> &output,
+                               const std::size_t max_samples,
+                               std::string &error) {
   std::vector<std::int16_t> raw(max_samples * 2U, 0);
-  stream_.read(reinterpret_cast<char*>(raw.data()), static_cast<std::streamsize>(raw.size() * sizeof(std::int16_t)));
-  const auto values_read = static_cast<std::size_t>(stream_.gcount()) / sizeof(std::int16_t);
+  stream_.read(reinterpret_cast<char *>(raw.data()),
+               static_cast<std::streamsize>(raw.size() * sizeof(std::int16_t)));
+  const auto values_read =
+      static_cast<std::size_t>(stream_.gcount()) / sizeof(std::int16_t);
   if (values_read == 0 && config_.loop_playback && Rewind()) {
     return ReadComplexInt16(output, max_samples, error);
   }
@@ -151,4 +158,4 @@ std::size_t ReplaySource::ReadComplexInt16(
   return output.size();
 }
 
-}  // namespace sdr_analyzer::sdr
+} // namespace sdr_analyzer::sdr

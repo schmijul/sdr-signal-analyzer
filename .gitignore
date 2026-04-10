@@ -1,8 +1,16 @@
 /build/
+/build-*/
+/.cache/
+/.mypy_cache/
+/.pytest_cache/
 /.venv/
+/dist/
+/site/
+/wheelhouse/
 /*.sigmf-data
 /*.sigmf-meta
 /*.bin
 /*.bin.json
 __pycache__/
 python/sdr_signal_analyzer/_sdr_signal_analyzer*.so
+python/sdr_signal_analyzer/_sdr_signal_analyzer*.pyd
