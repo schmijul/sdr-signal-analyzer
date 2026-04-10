@@ -2,19 +2,37 @@
 
 from __future__ import annotations
 
+import ast
 import os
 import unittest
+from pathlib import Path
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 try:
     from PySide6 import QtWidgets
-except ImportError:
-    print("PySide6 not available; skipping GUI validation test.")
-    raise SystemExit(77)
+    from sdr_signal_analyzer import SourceKind
+    from sdr_signal_analyzer.gui import MainWindow
 
-from sdr_signal_analyzer import SourceKind
-from sdr_signal_analyzer.gui import MainWindow
+    GUI_AVAILABLE = True
+except ImportError:
+    QtWidgets = None
+    SourceKind = None
+    MainWindow = None
+    GUI_AVAILABLE = False
+
+
+ROOT = Path(__file__).resolve().parents[1]
+GUI_SOURCE = ROOT / "python" / "sdr_signal_analyzer" / "gui.py"
+DEMO_SOURCE = ROOT / "python" / "sdr_signal_analyzer" / "demo.py"
+
+
+def _docstring_from_source(path: Path, name: str) -> str | None:
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    for node in tree.body:
+        if isinstance(node, (ast.ClassDef, ast.FunctionDef)) and node.name == name:
+            return ast.get_docstring(node)
+    return None
 
 
 def select_source_kind(window: MainWindow, kind: SourceKind) -> None:
@@ -28,12 +46,18 @@ def select_source_kind(window: MainWindow, kind: SourceKind) -> None:
 class GuiValidationTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
+        if not GUI_AVAILABLE:
+            raise unittest.SkipTest("PySide6 not available.")
         cls._app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 
     def setUp(self) -> None:
+        if not GUI_AVAILABLE:
+            self.skipTest("PySide6 not available.")
         self.window = MainWindow()
 
     def tearDown(self) -> None:
+        if not GUI_AVAILABLE:
+            return
         self.window._session.stop()
         self.window.close()
         self._app.processEvents()
@@ -78,6 +102,28 @@ class GuiValidationTests(unittest.TestCase):
             self.window._status_label.text(),
             "Input error: Marker BW must be a number.",
         )
+
+    def test_default_state_uses_simulator_profile(self) -> None:
+        self.assertEqual(self.window._source_kind.currentData(), SourceKind.SIMULATOR)
+        self.assertEqual(self.window._fft_edit.text(), "2048")
+        self.assertEqual(self.window._start_button.text(), "Start")
+        self.assertEqual(self.window._status_label.text(), "Idle")
+        self.assertEqual(self.window._waterfall._rows, 220)
+
+
+class GuiDocstringTests(unittest.TestCase):
+    def test_gui_public_entrypoints_and_widgets_are_documented(self) -> None:
+        expectations = [
+            (GUI_SOURCE, "MainWindow"),
+            (GUI_SOURCE, "PlotCanvas"),
+            (GUI_SOURCE, "WaterfallCanvas"),
+            (GUI_SOURCE, "DetectionTable"),
+            (GUI_SOURCE, "main"),
+            (DEMO_SOURCE, "main"),
+        ]
+        for path, name in expectations:
+            with self.subTest(name=name):
+                self.assertTrue((_docstring_from_source(path, name) or "").strip(), name)
 
 
 if __name__ == "__main__":

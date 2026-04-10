@@ -44,6 +44,7 @@ DEFAULT_PLOT_MARGIN_BOTTOM_WITH_LABELS = 30
 DEFAULT_PLOT_MARGIN_BOTTOM_WITHOUT_LABELS = 16
 DEFAULT_PLOT_Y_LABEL_WIDTH = 68
 DEFAULT_PLOT_NOISE_LABEL_WIDTH = 110
+DEFAULT_LEGEND_WIDTH = 210
 DEFAULT_WATERFALL_MARGIN_LEFT = 80
 DEFAULT_WATERFALL_MARGIN_TOP = 32
 DEFAULT_WATERFALL_MARGIN_RIGHT = 18
@@ -256,7 +257,7 @@ class PlotCanvas(QtWidgets.QWidget):
             painter.drawPath(path)
 
         if self._show_legend:
-            legend_x = plot_rect.right() - 210
+            legend_x = plot_rect.right() - DEFAULT_LEGEND_WIDTH
             legend_y = plot_rect.top() + 16
             for name, color, _ in self._series:
                 painter.setPen(QtGui.QPen(color, 3))
