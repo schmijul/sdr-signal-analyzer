@@ -96,12 +96,33 @@ void TestBurstClassification() {
   Require(saw_burst_like, "Expected burst-like classification for gated signal.");
 }
 
+void TestMarkerMeasurement() {
+  ProcessingConfig config;
+  config.fft_size = 2048;
+  Analyzer analyzer(config);
+
+  const auto samples = GenerateTone(2048, 2.4e6, 200000.0, 0.8f);
+  Marker marker;
+  marker.center_frequency_hz = 100200000.0;
+  marker.bandwidth_hz = 100000.0;
+
+  const auto snapshot = analyzer.Process(3, 100e6, 2.4e6, samples, {marker});
+  Require(snapshot.analysis.marker_measurements.size() == 1, "Expected one marker measurement.");
+
+  const auto& measurement = snapshot.analysis.marker_measurements.front();
+  Require(measurement.center_frequency_hz == marker.center_frequency_hz, "Marker center frequency should round-trip.");
+  Require(measurement.bandwidth_hz == marker.bandwidth_hz, "Marker bandwidth should round-trip.");
+  Require(measurement.peak_power_dbfs > measurement.average_power_dbfs, "Peak power should exceed average power.");
+  Require(measurement.peak_power_dbfs > -30.0, "Expected a strong in-band marker reading.");
+}
+
 }  // namespace
 
 int main() {
   try {
     TestPeakDetection();
     TestBurstClassification();
+    TestMarkerMeasurement();
   } catch (const std::exception& ex) {
     std::cerr << ex.what() << "\n";
     return 1;
