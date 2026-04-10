@@ -9,6 +9,10 @@ This backend is optional:
 - the repo still builds without UHD
 - CI does not require physical USRP hardware
 
+Stability note:
+- the integration point exists
+- the release docs should treat UHD as hardware-dependent until a real-device validation run is captured
+
 ## Build Requirements
 
 You need UHD development headers and libraries installed before configuring the project.
@@ -69,6 +73,11 @@ Use this checklist on a machine with a real USRP attached:
 4. If the radio supports it, vary analog bandwidth and antenna selection.
 5. Record a short capture and replay it through the replay source.
 6. Compare replay detections against the live run qualitatively.
+
+Expected outcome:
+- the session starts cleanly with the intended device args
+- live snapshots appear without backend errors
+- replay of a captured file remains the preferred deterministic comparison path
 
 ## Failure Modes
 

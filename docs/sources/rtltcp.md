@@ -6,6 +6,10 @@ Use the built-in `rtl_tcp` source when you want live streaming from an RTL-SDR-s
 
 This path is implemented directly in the repo and is covered by a mock-server regression test.
 
+Stability note:
+- the code path is verified
+- real hardware/network deployments still depend on the remote server implementation and transport quality
+
 ## CLI Example
 
 ```bash
@@ -53,3 +57,7 @@ The source:
 2. Start a session and confirm snapshots arrive.
 3. Tune center frequency and verify spectral movement.
 4. Disconnect the server and confirm the session stops with an error.
+
+Expected outcome:
+- a successful connection produces spectrum snapshots
+- a disconnect turns into an actionable `last_error()` message instead of silent failure

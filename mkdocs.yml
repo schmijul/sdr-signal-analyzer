@@ -25,6 +25,8 @@ nav:
   - Public API: api.md
   - Trust and Limits: limitations.md
   - Replay and Recording: replay-and-recording.md
+  - Troubleshooting: troubleshooting.md
+  - Recommended Workflows: workflows.md
   - Testing and Validation: testing.md
   - Benchmarking: benchmarking.md
   - Source Guides:

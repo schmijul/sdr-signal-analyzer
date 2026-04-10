@@ -90,6 +90,11 @@ Committed fixture:
   --frames 4
 ```
 
+Expected result:
+- repeatable detections near `100.15 MHz`
+- a clean stop at end of stream
+- identical behavior through raw and SigMF replay paths
+
 ## Replay Validation Rules
 
 Current replay behavior is intentionally stricter than the earliest MVP:
@@ -110,3 +115,5 @@ These fixtures are synthetic narrowband tones used for:
 - replay regression tests
 - documentation examples
 - deterministic CLI demos
+
+If you need broader replay coverage, add more committed fixtures rather than relying only on inline generated samples. Reproducible assets are preferred for cases that should remain stable over time.

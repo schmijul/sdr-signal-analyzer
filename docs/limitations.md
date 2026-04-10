@@ -22,6 +22,14 @@ Current labels are intentionally modest:
 
 These labels are useful for triage and UI filtering, but they are not validated classifiers. They should be read as descriptive hints, not as protocol identification or modulation certainty.
 
+Stable workflow reminder:
+1. simulator
+2. replay
+3. `rtl_tcp`
+4. hardware backends
+
+This ordering keeps the trusted path deterministic until you intentionally move to live radios.
+
 ## Known Failure Modes
 
 The current pipeline can be misleading when:
@@ -43,6 +51,7 @@ The project does not currently claim:
 - protocol decoding
 - regulatory compliance measurements
 - research-grade classification accuracy
+- measurement-grade instrumentation
 
 ## How To Trust Results
 

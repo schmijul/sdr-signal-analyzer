@@ -5,100 +5,75 @@
 [![Status](https://img.shields.io/badge/status-alpha-orange)](https://github.com/schmijul/sdr-signal-analyzer)
 [![Python](https://img.shields.io/badge/python-3.10--3.12-blue)](https://github.com/schmijul/sdr-signal-analyzer/blob/main/pyproject.toml)
 
-C++-first SDR spectrum analyzer with a Python GUI, deterministic replay tooling, and optional live-device integrations. The backend owns capture, FFT processing, detection, recording, replay, and analysis so it can run headless from a CLI, power a Qt desktop UI, or be embedded into other frontends without pulling Python into the core runtime. It is a reusable analysis backend, not a demodulator or protocol decoder.
+## What This Is
 
-![Overview screenshot](https://raw.githubusercontent.com/schmijul/sdr-signal-analyzer/main/docs/screenshots/overview.png)
+`sdr-signal-analyzer` is a C++-first SDR spectrum analyzer with a thin Python GUI, deterministic replay support, and optional live-device backends. It captures IQ samples, runs FFT-based analysis, estimates noise and occupied bandwidth, and presents the results through a CLI, Qt GUI, or embedded session API.
 
-## Why This Project
+It is a reusable analysis backend, not a demodulator, protocol decoder, or measurement-grade instrument.
 
-`sdr-signal-analyzer` is built around one principle: the radio and DSP path should stay reusable even when the UI changes.
+## Who It Is For
 
-That gives you:
-- real-time spectrum, waterfall, and time-domain views
-- heuristic peak detection, bandwidth estimation, noise-floor estimation, and heuristic labels
-- raw `.bin` and SigMF recording plus deterministic replay
-- a built-in simulator for screenshots, demos, and regression tests
-- a built-in `rtl_tcp` client for RTL-SDR style remote streams
-- optional native UHD/USRP and SoapySDR backends when those SDKs are available
-- backend regression tests plus Python and GUI smoke coverage in CI
+Use this project if you want:
+- a deterministic simulator and replay path for development and regression tests
+- a backend you can embed in C++ or drive from Python
+- a GUI and CLI that share the same processing pipeline
+- a lightweight way to inspect spectrum activity without coupling the core to the frontend
 
-## Current Maturity
+It is a good fit for developers, radio hobbyists, and tooling authors who need reproducible signal analysis workflows. It is not aimed at calibrated lab measurements or automatic modulation classification.
 
-This repository is intended to be a serious alpha/beta package, not a research-grade analyzer.
+## What Works Today
 
-Current trust level:
-- deterministic replay and simulator coverage in CI
-- lifecycle and input-validation regressions for the public session and GUI paths
-- heuristic analysis outputs that are documented as approximate
-- limited in-repo real hardware evidence today; stronger RTL-SDR and USRP evidence is still being assembled
+The current stable workflow is:
+1. `simulator`
+2. `replay`
+3. `rtl_tcp`
+4. advanced backends such as UHD and SoapySDR
 
-Non-goals for the current release line:
-- absolute RF power calibration
-- demodulation or protocol decoding
-- validated modulation classification
-- compliance or metrology use
+Verified today:
+- simulator analysis, CLI smoke, and Python example smoke
+- replay of committed deterministic fixtures
+- `rtl_tcp` source coverage with a mock server
+- Qt GUI startup smoke in offscreen mode
+- native C++ regression tests for DSP, session lifecycle, and recording/replay
 
-## Hardware And Backend Support
+## What Is Experimental
 
-| Backend | Status | Extra runtime requirement | Typical use |
-| --- | --- | --- | --- |
-| `simulator` | Built in | None | Fastest demo path, screenshots, CI, deterministic local testing |
-| `replay` | Built in | Recorded `.bin` + JSON or SigMF files | Offline analysis, regression testing, reproducible docs |
-| `rtl_tcp` | Built in | Reachable `rtl_tcp` server | Remote RTL-SDR style streaming without SoapySDR |
-| `uhd` | Optional build-time backend | UHD headers, libraries, and a supported USRP | Native USRP RX streaming |
-| `soapy` | Optional build-time backend | SoapySDR headers, libraries, and a supported device driver | Generic live SDR device support |
+The following are available but should still be treated as experimental or hardware-dependent:
+- UHD live streaming
+- SoapySDR live streaming
+- heuristic detection labels such as `narrowband`, `burst-like`, and `likely FM`
+- performance characteristics on live SDR hardware
 
-Optional hardware SDKs are detected during a direct CMake build. The repository still builds and tests cleanly without them.
+The analyzer reports useful hints, not guaranteed classifications. Detection accuracy is heuristic and should not be treated as a promise.
 
-## Installation
+## Quickstart
 
-### Python package from PyPI
-
-Install the GUI-capable package:
-
-```bash
-python -m pip install "sdr-signal-analyzer[gui]"
-```
-
-Notes:
-- if a wheel is available for your platform, this is the fastest install path
-- if `pip` falls back to a source build, you need a working C++20 toolchain, CMake, and Python development headers
-- PySide6 is only needed when you want the Qt GUI
-
-Minimal package install without GUI extras:
-
-```bash
-python -m pip install sdr-signal-analyzer
-```
-
-### Build from source
-
-Baseline requirements:
-- CMake 3.24 or newer
-- C++20-capable compiler
-- Python 3.10 or newer
-- `pybind11` and `scikit-build-core` if you want to build the Python package locally
-- PySide6 if you want to run the Qt GUI
-
-Optional hardware requirements:
-- install UHD development packages before configuring if you want native USRP support
-- install SoapySDR development packages before configuring if you want the generic Soapy backend
-
-Local developer setup:
+### 1. Install
 
 ```bash
 python3 -m venv .venv
 . .venv/bin/activate
 python -m pip install --upgrade pip
-python -m pip install -e ".[dev,gui]"
-cmake -S . -B build
-cmake --build build
-ctest --test-dir build --output-on-failure
+python -m pip install -e ".[gui]"
 ```
 
-## Quickstart
+Expected result:
+- the editable install succeeds
+- the Python bindings import successfully
+- the Qt GUI dependencies are available in the venv
 
-### 1. Fastest demo path: simulator CLI
+### 2. Run the one-command demo
+
+```bash
+sdr-signal-analyzer-demo
+```
+
+Expected result:
+- the simulator starts without hardware
+- detections print to stdout
+- the command exits successfully after a short run
+
+### 3. Run the simulator CLI
 
 ```bash
 cmake -S . -B build
@@ -106,21 +81,11 @@ cmake --build build
 ./build/sdr-analyzer-cli --source simulator --frames 20
 ```
 
-### 2. Launch the Qt GUI
+Expected result:
+- frames print with `noise=` and `detections=`
+- no live SDR hardware is required
 
-From an installed package:
-
-```bash
-sdr-signal-analyzer-gui
-```
-
-From a source checkout after building the extension:
-
-```bash
-PYTHONPATH=python python -m sdr_signal_analyzer
-```
-
-### 3. Replay a committed fixture
+### 4. Replay a committed fixture
 
 ```bash
 ./build/sdr-analyzer-cli \
@@ -130,7 +95,11 @@ PYTHONPATH=python python -m sdr_signal_analyzer
   --frames 4
 ```
 
-### 4. Connect to a live `rtl_tcp` server
+Expected result:
+- the session produces repeatable detections near `100.15 MHz`
+- replay exits cleanly at end of stream
+
+### 5. Connect to `rtl_tcp`
 
 ```bash
 ./build/sdr-analyzer-cli \
@@ -142,31 +111,77 @@ PYTHONPATH=python python -m sdr_signal_analyzer
   --gain-db 20
 ```
 
-### 5. Connect to a USRP through UHD
+Expected result:
+- the analyzer connects to the remote server
+- spectral movement follows the incoming stream
+- disconnects surface as actionable source errors
 
-```bash
-./build/sdr-analyzer-cli \
-  --source uhd \
-  --device-args "type=b200" \
-  --channel 0 \
-  --antenna RX2 \
-  --bandwidth-hz 2000000 \
-  --center-hz 100000000 \
-  --sample-rate 2000000 \
-  --gain-db 25
-```
+## Expected Outputs
 
-## Python Example
+Typical CLI output includes:
+- frame number
+- estimated noise floor in `dBFS`
+- strongest peak estimate in `dBFS`
+- number of detections
+- per-detection center frequency, bandwidth, and heuristic label
 
-The repository ships a small Python example that drives the simulator and prints detections:
+Typical GUI output includes:
+- spectrum
+- waterfall
+- time-domain view
+- detection table
+- marker measurements
 
-```bash
-python examples/run_simulator.py
-```
+## Validation Matrices
 
-If you installed the project into a virtual environment first, the same example becomes a quick smoke test for the Python bindings.
+### Platform Validation
 
-## Packaging And Releases
+Only verified combinations are listed here.
+
+| OS | Python version | GUI working | Backend working |
+| --- | --- | --- | --- |
+| Ubuntu 24.04 | 3.12 | Yes | Yes |
+
+Evidence:
+- local editable install in a fresh venv using `python3`
+- simulator demo and Python smoke ran successfully
+- C++ test suite passed in the current build tree
+
+### Backend Validation
+
+Only combinations with direct evidence are marked verified.
+
+| Backend | Tested hardware | Sample rate range | Known limitations | Stability |
+| --- | --- | --- | --- | --- |
+| `simulator` | None | Verified at 2.4 Msps in the demo/smoke path | Synthetic source only | Stable |
+| `replay` | None | Matches the committed 2.4 Msps fixture metadata | Depends on correct metadata and file integrity | Stable |
+| `rtl_tcp` | Mock `rtl_tcp` server in CI | Verified at 2.4 Msps in the mock-server test | Network timing and server behavior matter | Stable for code path, hardware-dependent in practice |
+| `uhd` | Not yet release-validated on attached hardware | Not yet documented from verified runs | Requires UHD SDK and supported device | Experimental |
+| `soapy` | Not yet release-validated on attached hardware | Not yet documented from verified runs | Requires SoapySDR SDK and a working driver stack | Experimental |
+
+## Comparison Positioning
+
+Use this project when you want:
+- replayable captures that can be used as deterministic tests
+- an embeddable backend instead of a GUI-only tool
+- a clear simulator-first workflow for demos and validation
+
+Compared with a pure live-viewer, this repository puts more emphasis on reproducibility and testability. Compared with a demodulation tool, it intentionally stops at spectrum analysis and heuristic labeling.
+
+## Documentation
+
+- [Documentation home](https://schmijul.github.io/sdr-signal-analyzer/)
+- [Architecture](docs/architecture.md)
+- [Public API](docs/api.md)
+- [Trust and limits](docs/limitations.md)
+- [Replay and recording](docs/replay-and-recording.md)
+- [Testing and validation](docs/testing.md)
+- [Source guides](docs/sources/index.md)
+- [Case studies and screenshots](docs/case-studies.md)
+- [Troubleshooting](docs/troubleshooting.md)
+- [Recommended workflows](docs/workflows.md)
+
+## Release And Packaging
 
 Package artifacts are built from `pyproject.toml` via `scikit-build-core`.
 
@@ -181,24 +196,9 @@ twine check dist/*
 `pyproject-build` is used instead of `python -m build` because this repository has a top-level `build/` directory for CMake output.
 
 Releases are intended to follow:
-- changelog-driven notes in [CHANGELOG.md](https://github.com/schmijul/sdr-signal-analyzer/blob/main/CHANGELOG.md)
+- changelog-driven notes in [CHANGELOG.md](CHANGELOG.md)
 - a tagged GitHub release such as `v0.1.0`
 - PyPI publishing from GitHub Actions through Trusted Publishing
-
-## Documentation
-
-- [Documentation home](https://schmijul.github.io/sdr-signal-analyzer/)
-- [Architecture](https://github.com/schmijul/sdr-signal-analyzer/blob/main/docs/architecture.md)
-- [Public API](https://github.com/schmijul/sdr-signal-analyzer/blob/main/docs/api.md)
-- [Replay and recording](https://github.com/schmijul/sdr-signal-analyzer/blob/main/docs/replay-and-recording.md)
-- [Trust and limits](https://github.com/schmijul/sdr-signal-analyzer/blob/main/docs/limitations.md)
-- [Source guides](https://github.com/schmijul/sdr-signal-analyzer/blob/main/docs/sources/index.md)
-- [Testing and validation](https://github.com/schmijul/sdr-signal-analyzer/blob/main/docs/testing.md)
-- [Case studies and screenshots](https://github.com/schmijul/sdr-signal-analyzer/blob/main/docs/case-studies.md)
-
-Additional screenshots:
-- [433 MHz style scene](https://raw.githubusercontent.com/schmijul/sdr-signal-analyzer/main/docs/screenshots/ism_433.png)
-- [Narrowband focus](https://raw.githubusercontent.com/schmijul/sdr-signal-analyzer/main/docs/screenshots/narrowband_focus.png)
 
 ## Development
 
@@ -212,4 +212,4 @@ QT_QPA_PLATFORM=offscreen PYTHONPATH=python python -m sdr_signal_analyzer
 pre-commit run --all-files
 ```
 
-Contributor guidance lives in [CONTRIBUTING.md](https://github.com/schmijul/sdr-signal-analyzer/blob/main/CONTRIBUTING.md).
+Contributor guidance lives in [CONTRIBUTING.md](CONTRIBUTING.md).

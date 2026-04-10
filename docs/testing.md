@@ -104,6 +104,8 @@ CI is intentionally hardware-free.
 
 ## Benchmark Output
 
+Coverage and benchmark reporting are informational. They publish evidence and artifacts, but they are not merge-gating performance thresholds.
+
 Benchmark runs are informational and should be compared only across the same runner class and build mode. See [Benchmarking](benchmarking.md) for the recorded fields and local invocation.
 
 ## Manual Hardware Validation

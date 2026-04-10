@@ -24,6 +24,7 @@ What it proves:
 - the GUI is fully driven by the backend snapshot API
 - the analyzer can display multiple signal-like structures simultaneously
 - the docs/screenshots are reproducible from code, not hand-edited assets
+- the same backend path can power both the GUI and the CLI
 
 ## 433 MHz Style Scene
 
@@ -36,6 +37,7 @@ What it shows:
 What it proves:
 - the UI handles alternate center frequencies and marker placement cleanly
 - the portfolio can present sub-GHz workflows in a reproducible way
+- the simulator path is useful for documentation and quick demos
 
 What it does not prove:
 - this is not a real over-the-air ISM capture
@@ -59,6 +61,26 @@ What it proves:
 - replay analysis is deterministic
 - raw and SigMF paths both support the same basic narrowband example
 - bandwidth estimation and marker measurement can be validated against a known synthetic signal, within the limits described in the trust page
+- CLI replay prints repeatable detections for the same capture
+
+## CLI Replay Example
+
+Input data:
+- `tests/fixtures/tone_cf32.sigmf-data`
+- `tests/fixtures/tone_cf32.sigmf-meta`
+
+Command:
+
+```bash
+./build/sdr-analyzer-cli --source replay --input tests/fixtures/tone_cf32.sigmf-data --meta tests/fixtures/tone_cf32.sigmf-meta --frames 4
+```
+
+Expected output:
+- frame lines with `noise=` and `detections=`
+- detections near `100.15 MHz`
+
+Interpretation:
+- this is a deterministic replay proof, not a live-spectrum calibration
 
 ## Regenerating Screenshots
 

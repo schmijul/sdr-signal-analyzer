@@ -1,5 +1,12 @@
 # Public API
 
+The stable public surface is intentionally small:
+- C++ headers under `include/sdr_analyzer/`
+- Python names exported from `sdr_signal_analyzer.__all__`
+- the installed executables documented in the README
+
+Everything else should be treated as implementation detail unless documented otherwise.
+
 ## Core Types
 
 The public C++ surface lives in `include/sdr_analyzer/`.
@@ -174,3 +181,22 @@ The Python bindings mirror the C++ API closely:
 - same snapshot/result objects
 
 The Python GUI is intentionally built on those bindings instead of reimplementing backend behavior.
+
+## Public Versus Internal
+
+Public:
+- `AnalyzerSession`
+- `SourceConfig`
+- `ProcessingConfig`
+- `RecordingConfig`
+- `RecordingFormat`
+- `SourceKind`
+- the result and measurement types in `include/sdr_analyzer/results.hpp`
+
+Internal:
+- `src/**`
+- GUI widgets and helper methods prefixed with `_`
+- source factory details
+- transport-specific implementation classes
+
+This boundary matters because the release process should not promise stability for internals that can still change without notice.
