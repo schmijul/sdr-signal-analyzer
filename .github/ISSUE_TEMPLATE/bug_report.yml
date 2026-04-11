@@ -64,4 +64,9 @@ body:
     id: logs
     attributes:
       label: Logs / screenshots
-      description: Paste relevant output, traceback, or screenshots.
+      description: Paste relevant output, traceback, screenshots, and mention whether you can attach `diagnostics.log`, `diagnostics.jsonl`, or `measurements.jsonl`.
+  - type: textarea
+    id: hardware
+    attributes:
+      label: Hardware disclosure
+      description: If hardware was involved, include the device model, driver/SDK version, and whether this was a prepared lab run or a completed validation session.

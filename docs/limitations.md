@@ -61,7 +61,7 @@ The project does not currently claim:
 Use the following hierarchy:
 1. Simulator and replay prove deterministic pipeline behavior.
 2. Synthetic fixtures prove regression behavior for known tones and bursts.
-3. Real RTL-SDR and USRP captures prove the workflow against live hardware.
+3. Live hardware requires a separate validation report with saved diagnostics, exports, and environment metadata.
 
 For public examples, prefer capture notes that state:
 - center frequency
@@ -71,3 +71,7 @@ For public examples, prefer capture notes that state:
 - whether the asset is synthetic, replayed, or live-captured
 
 That keeps the repo honest about what is measured and what is inferred.
+
+See also:
+- [Hardware Validation Plan](hardware_validation_plan.md)
+- [Hardware Validation Status](hardware_validation_status.md)

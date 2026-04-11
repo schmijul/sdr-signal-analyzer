@@ -11,6 +11,10 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 - Release automation for GitHub Releases, PyPI publishing, and GitHub Pages documentation deployment.
 - Expanded project metadata, contributor guidance, and documentation landing pages.
 - Pre-commit hooks for Python and C/C++ formatting.
+- Session-scoped structured diagnostics exposed through the C++ API, Python bindings, GUI, and CLI logging flags.
+- Maintainer-facing release validation script and dedicated release-readiness documentation.
+- Hardware-validation planning pages, status matrix, SoapySDR source guide, and a reusable lab report template.
+- Stronger fixture inventory documentation and bug-report guidance for diagnostics and hardware disclosure.
 
 ## [0.1.0] - 2026-04-10
 

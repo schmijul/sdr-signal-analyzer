@@ -712,6 +712,16 @@ class MainWindow(QtWidgets.QMainWindow):
     def _report_input_error(self, message: str) -> None:
         self._set_status(f"Input error: {message}", error=True)
 
+    def _format_diagnostic_message(self, prefix: str) -> str:
+        diagnostics = self._session.diagnostics()
+        if not diagnostics:
+            return f"{prefix}: {self._session.last_error()}"
+        latest = diagnostics[-1]
+        return (
+            f"{prefix}: {self._session.last_error()} "
+            f"[{latest.component}:{latest.code}]"
+        )
+
     def _build_source_config(self) -> SourceConfig:
         source = self._session.source_config()
         source.kind = self._source_kind.currentData()
@@ -800,6 +810,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def _toggle_stream(self) -> None:
         if self._session.is_running():
             self._session.stop()
+            self._session.drain_diagnostics()
             self._timer.stop()
             self._start_button.setText("Start")
             self._set_status("Stopped")
@@ -813,7 +824,10 @@ class MainWindow(QtWidgets.QMainWindow):
             return
 
         if not self._session.update_source_config(source):
-            self._set_status(f"Source update failed: {self._session.last_error()}", error=True)
+            self._set_status(
+                self._format_diagnostic_message("Source update failed"),
+                error=True,
+            )
             return
 
         self._session.update_processing_config(processing)
@@ -821,9 +835,13 @@ class MainWindow(QtWidgets.QMainWindow):
         self._waterfall.set_fft_size(processing.fft_size)
         self._session.set_markers(self._markers)
         if not self._session.start():
-            self._set_status(f"Start failed: {self._session.last_error()}", error=True)
+            self._set_status(
+                self._format_diagnostic_message("Start failed"),
+                error=True,
+            )
             return
 
+        self._session.drain_diagnostics()
         self._timer.start()
         self._start_button.setText("Stop")
         self._set_status("Running")
@@ -831,8 +849,20 @@ class MainWindow(QtWidgets.QMainWindow):
     def _poll_session(self) -> None:
         snapshot = self._session.poll_snapshot()
         if snapshot is None:
+            if not self._session.is_running():
+                diagnostics = self._session.drain_diagnostics()
+                if diagnostics:
+                    latest = diagnostics[-1]
+                    self._timer.stop()
+                    self._start_button.setText("Start")
+                    self._set_status(
+                        f"Session stopped: {latest.message} "
+                        f"[{latest.component}:{latest.code}]",
+                        error=latest.level == "error",
+                    )
             return
 
+        self._session.drain_diagnostics()
         spectrum = snapshot.spectrum
         detections = snapshot.analysis.detections
         markers = snapshot.analysis.marker_measurements

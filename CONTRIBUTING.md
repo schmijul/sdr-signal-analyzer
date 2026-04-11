@@ -38,11 +38,16 @@ PYTHONPATH=python python -m sdr_signal_analyzer
 Validate package metadata and distribution artifacts:
 
 ```bash
-pyproject-build
-twine check dist/*
+python3 scripts/release_validate.py --skip-install-smoke
 ```
 
-`pyproject-build` is preferred over `python -m build` because this repository keeps CMake output in the top-level `build/` directory.
+`pyproject-build` is still used under the hood because this repository keeps CMake output in the top-level `build/` directory, but `scripts/release_validate.py` is the preferred maintainer entrypoint because it keeps the release checks repeatable.
+
+If Docker is available and you want the fresh-Ubuntu install smoke too:
+
+```bash
+python3 scripts/release_validate.py
+```
 
 When a change affects behavior, follow test-driven development:
 
@@ -89,5 +94,15 @@ Every PR should:
 - note whether the change touches a public API, a CLI command, or documentation only
 - call out any known gaps, especially if a hardware-backed path could not be validated
 - include the exact commands used for verification when practical
+- keep diagnostics logs separate from JSONL measurement export when both are attached
 
 For hardware-sensitive changes, include a short manual validation checklist in the PR description if full automation is not realistic.
+When attached-device validation is prepared but not executed, say that explicitly and link the relevant checklist or template instead of implying success.
+
+Useful maintainer and lab-prep docs:
+- `docs/release.md`
+- `docs/release_checklist.md`
+- `docs/hardware_validation_plan.md`
+- `docs/hardware_validation_status.md`
+- `docs/hardware_validation_report_template.md`
+- `docs/templates/hardware_validation_report_template.md`

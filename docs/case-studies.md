@@ -11,14 +11,9 @@ Important distinction:
 
 ## Overview UI
 
-Image: `docs/screenshots/overview.png`
+![Simulator-generated overview screenshot of the GUI. Not live RF validation.](screenshots/overview.png)
 
-What it shows:
-- full spectrum view
-- waterfall rendering
-- time-domain view
-- detection table
-- marker-based annotation
+*Full spectrum, waterfall, time-domain view, and detection table from the offscreen simulator GUI. This is a reproducible documentation asset, not live RF validation.*
 
 What it proves:
 - the GUI is fully driven by the backend snapshot API
@@ -26,18 +21,24 @@ What it proves:
 - the docs/screenshots are reproducible from code, not hand-edited assets
 - the same backend path can power both the GUI and the CLI
 
+Status:
+- provenance: `simulator`
+- evidence class: `Verified` for GUI reproducibility
+
 ## 433 MHz Style Scene
 
-Image: `docs/screenshots/ism_433.png`
+![Simulator-generated 433 MHz scene from the GUI. Not live RF validation.](screenshots/ism_433.png)
 
-What it shows:
-- a simulation positioned around 433.92 MHz
-- visually plausible ISM-band style activity
+*A simulator-backed scene centered around 433.92 MHz for portfolio and layout coverage. It is illustrative only and does not validate live RF conditions.*
 
 What it proves:
 - the UI handles alternate center frequencies and marker placement cleanly
 - the portfolio can present sub-GHz workflows in a reproducible way
 - the simulator path is useful for documentation and quick demos
+
+Status:
+- provenance: `simulator`
+- evidence class: `Verified` for documentation reproducibility
 
 What it does not prove:
 - this is not a real over-the-air ISM capture
@@ -45,7 +46,9 @@ What it does not prove:
 
 ## Narrowband Fixture
 
-Image: `docs/screenshots/narrowband_focus.png`
+![Simulator-generated narrowband focus screenshot of the GUI. Not live RF validation.](screenshots/narrowband_focus.png)
+
+*A simulator-backed narrowband view used to show a tighter frequency span and marker measurement layout. It is reproducible and illustrative, not calibrated instrumentation.*
 
 Related fixtures:
 - `tests/fixtures/tone_cf32.bin`
@@ -62,6 +65,10 @@ What it proves:
 - raw and SigMF paths both support the same basic narrowband example
 - bandwidth estimation and marker measurement can be validated against a known synthetic signal, within the limits described in the trust page
 - CLI replay prints repeatable detections for the same capture
+
+Status:
+- provenance: `replay fixture`
+- evidence class: `Verified` for deterministic replay behavior
 
 ## CLI Replay Example
 
@@ -82,21 +89,46 @@ Expected output:
 Interpretation:
 - this is a deterministic replay proof, not a live-spectrum calibration
 
-## Regenerating Screenshots
+## Log Measurements Over Time
 
-Use the screenshot generator in `scripts/` with an offscreen Qt session.
-
-Example:
+The CLI can export the same structured measurement schema that Python can build from the public API:
 
 ```bash
-QT_QPA_PLATFORM=offscreen .venv/bin/python scripts/generate_portfolio_assets.py \
-  --output docs/screenshots/overview.png \
-  --center-hz 100000000 \
-  --sample-rate 2400000 \
-  --gain-db 10 \
-  --marker-hz 100000000 \
-  --marker-bw-hz 200000
+./build/sdr-analyzer-cli \
+  --source simulator \
+  --frames 20 \
+  --export-jsonl docs/examples/measurements.jsonl \
+  --export-interval 2
 ```
+
+Use this when you want:
+- a metadata/header record for reproducibility
+- frame-local detections and marker measurements logged over time
+- a JSONL file that downstream Python tooling can read directly
+
+Interpretation:
+- marker measurements remain frame-local values, not long-window calibrated averages
+- the export is for analysis and reproducibility, not calibrated instrumentation
+
+## Regenerating Screenshots
+
+Build the native and Python GUI pieces first, then render each named simulator preset in offscreen mode.
+
+```bash
+cmake -S . -B build
+cmake --build build
+QT_QPA_PLATFORM=offscreen PYTHONPATH=python python scripts/generate_portfolio_assets.py \
+  --preset overview \
+  --output docs/screenshots/overview.png
+QT_QPA_PLATFORM=offscreen PYTHONPATH=python python scripts/generate_portfolio_assets.py \
+  --preset 433-mhz \
+  --output docs/screenshots/ism_433.png
+QT_QPA_PLATFORM=offscreen PYTHONPATH=python python scripts/generate_portfolio_assets.py \
+  --preset narrowband-focus \
+  --output docs/screenshots/narrowband_focus.png
+```
+
+Use `--all --output-dir docs/screenshots` if you want to refresh the full committed set in one pass.
 
 ## What Still Improves The Portfolio
 
@@ -104,3 +136,9 @@ The next step up from the current docs set is real capture evidence:
 - FM broadcast recording with replay and expected bandwidth notes
 - real 433 MHz activity capture
 - one or more actual hardware screenshots from RTL-SDR and USRP sessions
+
+Those future assets should only be added together with:
+- a completed hardware validation report
+- saved diagnostics logs
+- saved JSONL measurement export when relevant
+- exact environment metadata

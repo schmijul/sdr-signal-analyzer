@@ -117,3 +117,11 @@ These fixtures are synthetic narrowband tones used for:
 - deterministic CLI demos
 
 If you need broader replay coverage, add more committed fixtures rather than relying only on inline generated samples. Reproducible assets are preferred for cases that should remain stable over time.
+
+For future hardware sessions, prefer this sequence:
+1. capture from the live backend
+2. save diagnostics and environment metadata
+3. replay the capture through `replay`
+4. compare the replay output against the live notes
+
+That keeps later debugging deterministic even when the original hardware is no longer attached.

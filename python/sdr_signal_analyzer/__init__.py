@@ -2,6 +2,7 @@ from ._sdr_signal_analyzer import (
     AnalysisReport,
     AnalyzerSession,
     AnalyzerSnapshot,
+    DiagnosticEntry,
     DetectionResult,
     Marker,
     MarkerMeasurement,
@@ -16,11 +17,20 @@ from ._sdr_signal_analyzer import (
     SpectrumFrame,
     TimeDomainFrame,
 )
+from .export import (
+    FORMAT_VERSION,
+    JsonlMeasurementExporter,
+    build_frame_record,
+    build_metadata_record,
+    export_jsonl,
+    write_jsonl_record,
+)
 
 __all__ = [
     "AnalysisReport",
     "AnalyzerSession",
     "AnalyzerSnapshot",
+    "DiagnosticEntry",
     "DetectionResult",
     "Marker",
     "MarkerMeasurement",
@@ -34,4 +44,10 @@ __all__ = [
     "SourceKind",
     "SpectrumFrame",
     "TimeDomainFrame",
+    "FORMAT_VERSION",
+    "JsonlMeasurementExporter",
+    "build_frame_record",
+    "build_metadata_record",
+    "export_jsonl",
+    "write_jsonl_record",
 ]

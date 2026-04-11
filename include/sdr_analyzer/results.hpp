@@ -69,4 +69,15 @@ struct SessionStatus {
   std::optional<RecordingStatus> recording;
 };
 
+struct DiagnosticEntry {
+  std::uint64_t session_id = 0;
+  std::string timestamp_utc;
+  std::string level;
+  std::string component;
+  std::string code;
+  std::string message;
+  std::string source_kind;
+  std::string source_description;
+};
+
 } // namespace sdr_analyzer

@@ -110,6 +110,23 @@ class GuiValidationTests(unittest.TestCase):
         self.assertEqual(self.window._status_label.text(), "Idle")
         self.assertEqual(self.window._waterfall._rows, 220)
 
+    def test_replay_eof_surfaces_a_stopped_status(self) -> None:
+        fixture_root = ROOT / "tests" / "fixtures"
+        select_source_kind(self.window, SourceKind.REPLAY)
+        self.window._input_path_edit.setText(str(fixture_root / "tone_cf32.sigmf-data"))
+        self.window._metadata_path_edit.setText(str(fixture_root / "tone_cf32.sigmf-meta"))
+        self.window._toggle_stream()
+        self.assertTrue(self.window._session.is_running())
+
+        for _ in range(300):
+            self._app.processEvents()
+            if not self.window._session.is_running():
+                break
+        self.assertFalse(self.window._session.is_running())
+        self.assertEqual(self.window._start_button.text(), "Start")
+        self.assertIn("Session stopped:", self.window._status_label.text())
+        self.assertIn("source.read_failed", self.window._status_label.text())
+
 
 class GuiDocstringTests(unittest.TestCase):
     def test_gui_public_entrypoints_and_widgets_are_documented(self) -> None:

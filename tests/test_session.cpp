@@ -69,6 +69,15 @@ void TestInvalidSimulatorConfigFailsFast() {
   Require(session.last_error().find("Sample rate must be positive.") !=
               std::string::npos,
           "Expected a sample-rate validation error.");
+  const auto diagnostics = session.diagnostics();
+  Require(!diagnostics.empty(),
+          "Failed start should leave behind diagnostics for inspection.");
+  Require(diagnostics.back().code == "source.configure_failed" ||
+              diagnostics.back().code == "source.start_failed" ||
+              diagnostics.back().code == "source.create_failed",
+          "Expected a start failure diagnostic code.");
+  Require(diagnostics.back().source_kind == "simulator",
+          "Expected simulator source kind in diagnostics.");
 }
 
 void TestSourceUpdateIsFastAndEventuallyApplied() {
@@ -175,6 +184,66 @@ void TestReplayEofStopsSessionAndAllowsRestart() {
   session.stop();
 }
 
+void TestDiagnosticsCanBeDrained() {
+  SourceConfig source;
+  source.kind = SourceKind::kReplay;
+  source.input_path = (kFixtureRoot / "tone_cf32.sigmf-data").string();
+  source.metadata_path = (kFixtureRoot / "tone_cf32.sigmf-meta").string();
+  source.frame_samples = 2048;
+
+  ProcessingConfig processing;
+  processing.fft_size = 2048;
+  processing.display_samples = 1024;
+
+  AnalyzerSession session(source, processing);
+  Require(session.start(),
+          "Replay session failed to start: " + session.last_error());
+  auto startup_diagnostics = session.drain_diagnostics();
+  Require(!startup_diagnostics.empty(),
+          "Starting a session should emit diagnostics.");
+  Require(session.diagnostics().empty(),
+          "drain_diagnostics should clear the buffered diagnostics.");
+
+  WaitForSnapshot(session, [](const AnalyzerSnapshot &) { return true; });
+  const auto deadline =
+      std::chrono::steady_clock::now() + std::chrono::seconds(2);
+  while (session.is_running() && std::chrono::steady_clock::now() < deadline) {
+    session.poll_snapshot();
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+  }
+  auto stop_diagnostics = session.drain_diagnostics();
+  Require(!stop_diagnostics.empty(),
+          "Runtime stop should emit diagnostics for EOF visibility.");
+  Require(stop_diagnostics.back().code == "session.worker_stopped" ||
+              stop_diagnostics.front().code == "source.read_failed",
+          "Expected source/session stop diagnostics after replay EOF.");
+  session.stop();
+}
+
+void TestMissingOptionalBackendProducesDiagnostics() {
+  SourceConfig source;
+  source.kind = SourceKind::kUhd;
+
+  ProcessingConfig processing;
+  processing.fft_size = 1024;
+
+  AnalyzerSession session(source, processing);
+  Require(!session.start(),
+          "UHD session should fail when the backend is unavailable.");
+  Require(session.last_error().find("Source creation for source 'uhd' failed") !=
+              std::string::npos,
+          "Expected contextual startup failure for a missing backend.");
+
+  const auto diagnostics = session.diagnostics();
+  Require(!diagnostics.empty(), "Expected buffered diagnostics on startup failure.");
+  const auto &entry = diagnostics.back();
+  Require(entry.code == "source.create_failed",
+          "Expected source.create_failed diagnostic code.");
+  Require(entry.source_kind == "uhd",
+          "Expected diagnostic to preserve the requested source kind.");
+  Require(entry.session_id > 0, "Expected a non-zero diagnostic session id.");
+}
+
 } // namespace
 
 int main() {
@@ -184,6 +253,8 @@ int main() {
     TestSourceUpdateIsFastAndEventuallyApplied();
     TestInvalidRuntimeReconfigureStopsSession();
     TestReplayEofStopsSessionAndAllowsRestart();
+    TestDiagnosticsCanBeDrained();
+    TestMissingOptionalBackendProducesDiagnostics();
   } catch (const std::exception &ex) {
     std::cerr << ex.what() << "\n";
     return 1;

@@ -35,7 +35,7 @@ python -m pip install -e ".[gui]"
 python -m sdr_signal_analyzer.demo --frames 4
 sdr-signal-analyzer-demo --frames 4
 
-python -m build
+pyproject-build
 twine check dist/*
 python -m pip install --force-reinstall dist/*.whl
 python -m sdr_signal_analyzer.demo --frames 4

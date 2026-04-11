@@ -20,4 +20,13 @@ Current fixtures:
 - `clipped.sigmf-data`
 - `clipped.sigmf-meta`
 
-The data represents a synthetic complex-float narrowband tone near 100.15 MHz with a 2.4 Msps capture configuration.
+Fixture classes:
+- `tone_cf32.*`: baseline narrowband tone used across raw and SigMF replay paths
+- `single_tone.*`: deterministic single-peak replay coverage
+- `multi_tone.*`: multiple separated narrowband peaks in one capture
+- `burst.*`: burst-like transient behavior for heuristic labeling coverage
+- `weak.*`: near-noise detection behavior
+- `wideband.*`: broader occupied spectrum and detection-span behavior
+- `clipped.*`: replay handling of clipped or distortion-heavy synthetic input
+
+All fixtures are synthetic and deterministic. They are meant to prove analyzer behavior, not live RF truth.

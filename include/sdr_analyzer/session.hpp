@@ -35,6 +35,8 @@ public:
 
   SourceConfig source_config() const;
   ProcessingConfig processing_config() const;
+  std::vector<DiagnosticEntry> diagnostics() const;
+  std::vector<DiagnosticEntry> drain_diagnostics();
   std::string last_error() const;
 
 private:

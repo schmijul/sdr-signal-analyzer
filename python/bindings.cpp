@@ -129,6 +129,17 @@ PYBIND11_MODULE(_sdr_signal_analyzer, module) {
       .def_readonly("source_description", &SessionStatus::source_description)
       .def_readonly("recording", &SessionStatus::recording);
 
+  py::class_<DiagnosticEntry>(module, "DiagnosticEntry")
+      .def(py::init<>())
+      .def_readonly("session_id", &DiagnosticEntry::session_id)
+      .def_readonly("timestamp_utc", &DiagnosticEntry::timestamp_utc)
+      .def_readonly("level", &DiagnosticEntry::level)
+      .def_readonly("component", &DiagnosticEntry::component)
+      .def_readonly("code", &DiagnosticEntry::code)
+      .def_readonly("message", &DiagnosticEntry::message)
+      .def_readonly("source_kind", &DiagnosticEntry::source_kind)
+      .def_readonly("source_description", &DiagnosticEntry::source_description);
+
   py::class_<AnalyzerSession>(module, "AnalyzerSession")
       .def(py::init<SourceConfig, ProcessingConfig>(),
            py::arg("source_config") = SourceConfig{},
@@ -146,5 +157,7 @@ PYBIND11_MODULE(_sdr_signal_analyzer, module) {
       .def("set_markers", &AnalyzerSession::set_markers)
       .def("source_config", &AnalyzerSession::source_config)
       .def("processing_config", &AnalyzerSession::processing_config)
+      .def("diagnostics", &AnalyzerSession::diagnostics)
+      .def("drain_diagnostics", &AnalyzerSession::drain_diagnostics)
       .def("last_error", &AnalyzerSession::last_error);
 }

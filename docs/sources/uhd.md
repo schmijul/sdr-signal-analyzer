@@ -4,6 +4,10 @@
 
 Use the `uhd` source when you want first-class USRP support without routing through SoapySDR.
 
+Status:
+- `Prepared for validation`
+- `Pending lab validation`
+
 This backend is optional:
 - it is compiled only when UHD is available at build time
 - the repo still builds without UHD
@@ -12,6 +16,7 @@ This backend is optional:
 Stability note:
 - the integration point exists
 - the release docs should treat UHD as hardware-dependent until a real-device validation run is captured
+- the full lab protocol lives in [../hardware_validation_plan.md](../hardware_validation_plan.md)
 
 ## Build Requirements
 
@@ -63,7 +68,7 @@ In the GUI:
 - optionally set channel, antenna, bandwidth, clock source, and time source
 - use the common center-frequency, sample-rate, and gain controls as normal
 
-## Manual Validation Checklist
+## Prepared Lab Checklist
 
 Use this checklist on a machine with a real USRP attached:
 
@@ -74,10 +79,12 @@ Use this checklist on a machine with a real USRP attached:
 5. Record a short capture and replay it through the replay source.
 6. Compare replay detections against the live run qualitatively.
 
-Expected outcome:
-- the session starts cleanly with the intended device args
-- live snapshots appear without backend errors
-- replay of a captured file remains the preferred deterministic comparison path
+Expected artifacts:
+- diagnostics log
+- JSONL export when useful
+- screenshots
+- environment details
+- replayable capture when practical
 
 ## Failure Modes
 
@@ -89,6 +96,12 @@ Common startup failures:
 - unsupported bandwidth or sample rate
 
 Runtime failures usually surface through `last_error()` and stop the session.
+
+Use CLI diagnostics for reproducible failure capture:
+
+```bash
+./build/sdr-analyzer-cli --source uhd --device-args "type=b200" --center-hz 100000000 --sample-rate 2000000 --gain-db 25 --frames 10 --log-level debug --log-json --log-file diagnostics.jsonl
+```
 
 ## Current Scope
 

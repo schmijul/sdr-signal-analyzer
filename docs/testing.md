@@ -40,6 +40,14 @@ These paths are expected to stay stable and are covered by automated tests:
 - missing replay path validation
 - invalid marker update validation
 
+`tests/test_diagnostics.py`
+- structured diagnostics for failed starts
+- diagnostics buffer drain semantics
+
+`tests/test_cli_export.py`
+- JSONL export schema and interval behavior
+- CLI diagnostic log file creation on failure
+
 When `PySide6` is missing, the GUI validation test is skipped explicitly instead of failing the whole suite.
 
 ### Non-Critical Paths
@@ -82,6 +90,7 @@ Python coverage and benchmark helpers:
 ```bash
 python3 scripts/python_coverage.py --output-dir quality-artifacts/python-coverage
 python3 scripts/benchmark_ci.py --cli ./build/sdr-analyzer-cli
+python3 scripts/release_validate.py --skip-install-smoke
 ```
 
 Expected outputs:
@@ -90,6 +99,24 @@ Expected outputs:
 - `quality-artifacts/python-coverage/coverage.xml`
 - `quality-artifacts/benchmark/benchmark.json`
 - `quality-artifacts/benchmark/benchmark.md`
+- `dist/*` plus an installed-wheel smoke if `python3 scripts/release_validate.py --skip-install-smoke` is run
+
+Diagnostics smoke:
+
+```bash
+./build/sdr-analyzer-cli \
+  --source replay \
+  --input tests/fixtures/tone_cf32.sigmf-data \
+  --meta tests/fixtures/tone_cf32.sigmf-meta \
+  --frames 4 \
+  --log-level debug \
+  --log-json \
+  --log-file quality-artifacts/diagnostics/replay.jsonl
+```
+
+Expected outputs:
+- `quality-artifacts/diagnostics/replay.jsonl`
+- one JSON diagnostic record per runtime event
 
 ## CI Coverage
 
@@ -108,28 +135,23 @@ Coverage and benchmark reporting are informational. They publish evidence and ar
 
 Benchmark runs are informational and should be compared only across the same runner class and build mode. See [Benchmarking](benchmarking.md) for the recorded fields and local invocation.
 
-## Manual Hardware Validation
+## Hardware Validation
 
-Automated tests do not replace real-device validation. For a serious release candidate, run:
+Automated tests do not replace attached-device validation.
 
-### UHD / USRP
+Prepared now:
+- [Hardware Validation Plan](hardware_validation_plan.md)
+- [Hardware Validation Status](hardware_validation_status.md)
+- [UHD / USRP Source Guide](sources/uhd.md)
+- [SoapySDR Source Guide](sources/soapy.md)
+- [Hardware Validation Report Template](hardware_validation_report_template.md)
 
-1. Start a UHD session with explicit device args.
-2. Tune center frequency, sample rate, gain, bandwidth, and antenna.
-3. Confirm the GUI updates in real time.
-4. Record a capture and replay it.
+Current truth:
+- UHD is `Prepared for validation` and `Pending lab validation`
+- SoapySDR is `Prepared for validation` and `Pending lab validation`
+- CI remains intentionally hardware-free
 
-### rtl_tcp
-
-1. Connect to a live server.
-2. Confirm tuning and stream stability.
-3. Force a disconnect and check error handling.
-
-### Replay
-
-1. Capture from a live source.
-2. Replay that capture.
-3. Compare detections and power levels against the live session.
+For `rtl_tcp`, the code path is verified through a mock server. Real server and RF behavior still depend on the live environment and should be documented with diagnostics logs and exact commands.
 
 ## Test Philosophy
 
@@ -139,5 +161,6 @@ The project prefers:
 - hardware checklists for real radio validation
 - fixtures for repeatability
 - heuristic outputs that are checked against controlled expectations, not treated as ground truth
+- explicit separation between diagnostics logs and measurement export
 
 This keeps the repo portable while still supporting serious hardware-oriented workflows.

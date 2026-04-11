@@ -39,16 +39,26 @@ Verified today:
 - `rtl_tcp` source coverage with a mock server
 - Qt GUI startup smoke in offscreen mode
 - native C++ regression tests for DSP, session lifecycle, and recording/replay
+- structured session diagnostics surfaced through the C++ core, Python API, GUI, and CLI
+
+Status taxonomy used in this repository:
+- `Verified`: direct deterministic or mocked evidence exists in the repo now
+- `Prepared for validation`: protocol, commands, and templates are ready
+- `Pending lab validation`: requires attached-device evidence before stronger claims
+- `Experimental`: intentionally heuristic or otherwise not a stability promise
+- `Not supported`: unavailable on the current platform or build
 
 `rtl_tcp` is the one backend with an explicit transport caveat: the built-in implementation uses POSIX sockets, is not authenticated, and is not encrypted. Treat it as a trusted-network workflow until a separate transport layer exists.
 
 ## What Is Experimental
 
-The following are available but should still be treated as experimental or hardware-dependent:
-- UHD live streaming
-- SoapySDR live streaming
+The following remain prepared but not yet hardware-verified:
+- UHD live streaming (`Prepared for validation`, `Pending lab validation`)
+- SoapySDR live streaming (`Prepared for validation`, `Pending lab validation`)
+
+The following are available but intentionally heuristic:
 - heuristic detection labels such as `narrowband`, `burst-like`, and `likely FM`
-- performance characteristics on live SDR hardware
+- live-hardware performance characteristics until a real lab report is linked
 
 The analyzer reports useful hints, not guaranteed classifications. Detection accuracy is heuristic and should not be treated as a promise.
 
@@ -176,13 +186,51 @@ Evidence:
 
 Only combinations with direct evidence are marked verified.
 
-| Backend | Tested hardware | Sample rate range | Known limitations | Stability |
+| Backend | Status | Tested hardware | Sample rate range | Known limitations |
 | --- | --- | --- | --- | --- |
-| `simulator` | None | Verified at 2.4 Msps in the demo/smoke path | Synthetic source only | Stable |
-| `replay` | None | Matches the committed 2.4 Msps fixture metadata | Depends on correct metadata and file integrity | Stable |
-| `rtl_tcp` | Mock `rtl_tcp` server in CI | Verified at 2.4 Msps in the mock-server test | Network timing and server behavior matter | Stable for code path, hardware-dependent in practice |
-| `uhd` | Not yet release-validated on attached hardware | Not yet documented from verified runs | Requires UHD SDK and supported device | Experimental |
-| `soapy` | Not yet release-validated on attached hardware | Not yet documented from verified runs | Requires SoapySDR SDK and a working driver stack | Experimental |
+| `simulator` | `Verified` | None | Verified at 2.4 Msps in the demo/smoke path | Synthetic source only |
+| `replay` | `Verified` | None | Matches the committed fixture metadata | Depends on correct metadata and file integrity |
+| `rtl_tcp` | `Verified` for the code path | Mock `rtl_tcp` server in CI | Verified at 2.4 Msps in the mock-server test | Network timing, trusted-network assumptions, and server behavior matter |
+| `uhd` | `Prepared for validation`, `Pending lab validation` | Not yet release-validated on attached hardware | Not yet documented from verified runs | Requires UHD SDK and supported device |
+| `soapy` | `Prepared for validation`, `Pending lab validation` | Not yet release-validated on attached hardware | Not yet documented from verified runs | Requires SoapySDR SDK and a working driver stack |
+
+For the detailed plan and promotion criteria, see:
+- [Hardware Validation Plan](docs/hardware_validation_plan.md)
+- [Hardware Validation Status](docs/hardware_validation_status.md)
+
+## Diagnostics
+
+Runtime diagnostics are separate from measurement export.
+
+Use CLI diagnostics when you need reproducible startup or backend failure evidence:
+
+```bash
+./build/sdr-analyzer-cli \
+  --source replay \
+  --input tests/fixtures/tone_cf32.sigmf-data \
+  --meta tests/fixtures/tone_cf32.sigmf-meta \
+  --frames 4 \
+  --log-level info \
+  --log-file diagnostics.log
+```
+
+Use JSON diagnostics when you want machine-readable bug-report artifacts:
+
+```bash
+./build/sdr-analyzer-cli \
+  --source replay \
+  --input tests/fixtures/tone_cf32.sigmf-data \
+  --meta tests/fixtures/tone_cf32.sigmf-meta \
+  --frames 4 \
+  --log-level debug \
+  --log-json \
+  --log-file diagnostics.jsonl
+```
+
+Expected result:
+- frame output stays on stdout
+- diagnostics go to stderr and the requested log file
+- `--export-jsonl` remains measurement data, not a diagnostics stream
 
 ## Comparison Positioning
 
@@ -199,7 +247,13 @@ Compared with a pure live-viewer, this repository puts more emphasis on reproduc
 - [Architecture](docs/architecture.md)
 - [Public API](docs/api.md)
 - [Trust and limits](docs/limitations.md)
+- [Diagnostics](docs/diagnostics.md)
+- [Quality evidence](docs/quality-evidence.md)
 - [Replay and recording](docs/replay-and-recording.md)
+- [Release readiness](docs/release.md)
+- [Release checklist](docs/release_checklist.md)
+- [Hardware validation plan](docs/hardware_validation_plan.md)
+- [Hardware validation status](docs/hardware_validation_status.md)
 - [Testing and validation](docs/testing.md)
 - [Source guides](docs/sources/index.md)
 - [Case studies and screenshots](docs/case-studies.md)
@@ -213,12 +267,11 @@ Package artifacts are built from `pyproject.toml` via `scikit-build-core`.
 Local release validation:
 
 ```bash
-python -m pip install build twine
-pyproject-build
-twine check dist/*
+python -m pip install -e ".[dev,gui]"
+python3 scripts/release_validate.py --skip-install-smoke
 ```
 
-`pyproject-build` is used instead of `python -m build` because this repository has a top-level `build/` directory for CMake output.
+The maintainer-facing release docs live in [docs/release.md](docs/release.md) and [docs/release_checklist.md](docs/release_checklist.md).
 
 Releases are intended to follow:
 - changelog-driven notes in [CHANGELOG.md](CHANGELOG.md)

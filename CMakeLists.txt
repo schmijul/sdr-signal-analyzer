@@ -162,6 +162,26 @@ if(SDR_ANALYZER_BUILD_PYTHON AND Python3_FOUND AND TARGET _sdr_signal_analyzer)
       ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_python_docstrings.py
   )
   set_tests_properties(python_docstrings PROPERTIES TIMEOUT 20)
+
+  add_test(
+    NAME diagnostics_api
+    COMMAND
+      ${CMAKE_COMMAND} -E env
+      PYTHONPATH=${CMAKE_CURRENT_SOURCE_DIR}/python
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_diagnostics.py
+  )
+  set_tests_properties(diagnostics_api PROPERTIES TIMEOUT 20)
+
+  add_test(
+    NAME release_validation_script
+    COMMAND
+      ${CMAKE_COMMAND} -E env
+      PYTHONPATH=${CMAKE_CURRENT_SOURCE_DIR}/python
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_release_validation_script.py
+  )
+  set_tests_properties(release_validation_script PROPERTIES TIMEOUT 20)
 endif()
 
 if(Python3_FOUND)

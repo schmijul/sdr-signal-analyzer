@@ -100,6 +100,8 @@ Important methods:
 - `stop_recording()`
 - `poll_snapshot()`
 - `set_markers(...)`
+- `diagnostics()`
+- `drain_diagnostics()`
 - `last_error()`
 
 Usage pattern:
@@ -116,6 +118,8 @@ Lifecycle note:
 - `poll_snapshot()` returns bounded queued snapshots, so callers should drain it regularly
 - `update_source_config(...)` updates the desired source settings immediately and the worker applies them on a later read cycle
 - after EOF or a source failure, `last_error()` preserves the stop reason and `start()` may be called again to create a fresh worker
+- `diagnostics()` returns the current bounded diagnostic buffer
+- `drain_diagnostics()` returns and clears the buffered session diagnostics
 
 Minimal C++ example:
 
@@ -257,6 +261,11 @@ Marker measurements in the export are frame-local values logged over time. The J
 The CLI now supports structured measurement export while polling snapshots:
 - `--export-jsonl PATH`
 - `--export-interval N`
+
+The CLI also supports runtime diagnostics logging:
+- `--log-level error|warn|info|debug`
+- `--log-file PATH`
+- `--log-json`
 
 Example:
 

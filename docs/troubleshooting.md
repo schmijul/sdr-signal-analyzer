@@ -93,9 +93,41 @@ This is required for CI-style GUI validation on machines without a display serve
 
 Disconnects are treated as source failures. The session should stop and surface the reason through `last_error()`.
 
+For reproducible diagnostics:
+
+```bash
+./build/sdr-analyzer-cli --source rtl_tcp --host 127.0.0.1 --port 1234 --log-level debug --log-json --log-file diagnostics.jsonl
+```
+
 ### Replay ends early
 
 Replay files stop at end of stream by design. For repeated playback, use a looping source configuration or replay a longer capture.
+
+## Diagnostics Workflow
+
+When the failure is unclear, collect software diagnostics separately from analyzer measurements:
+
+```bash
+./build/sdr-analyzer-cli \
+  --source simulator \
+  --frames 10 \
+  --log-level debug \
+  --log-json \
+  --log-file quality-artifacts/diagnostics/debug.jsonl
+```
+
+If the issue affects analyzer output rather than startup, also collect:
+
+```bash
+./build/sdr-analyzer-cli \
+  --source simulator \
+  --frames 10 \
+  --export-jsonl quality-artifacts/diagnostics/measurements.jsonl
+```
+
+Interpretation:
+- `debug.jsonl` is the software log
+- `measurements.jsonl` is the analyzer measurement export
 
 ## Fast Recovery Workflow
 

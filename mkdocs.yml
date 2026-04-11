@@ -24,7 +24,15 @@ nav:
   - Architecture: architecture.md
   - Public API: api.md
   - Trust and Limits: limitations.md
+  - Diagnostics: diagnostics.md
+  - Quality Evidence: quality-evidence.md
   - Replay and Recording: replay-and-recording.md
+  - Release Readiness: release.md
+  - Release Checklist: release_checklist.md
+  - Hardware Validation Summary: hardware-validation.md
+  - Hardware Validation Plan: hardware_validation_plan.md
+  - Hardware Validation Status: hardware_validation_status.md
+  - Hardware Validation Report Template: hardware_validation_report_template.md
   - Troubleshooting: troubleshooting.md
   - Recommended Workflows: workflows.md
   - Testing and Validation: testing.md
@@ -33,4 +41,5 @@ nav:
       - Overview: sources/index.md
       - rtl_tcp: sources/rtltcp.md
       - UHD / USRP: sources/uhd.md
+      - SoapySDR: sources/soapy.md
   - Case Studies: case-studies.md

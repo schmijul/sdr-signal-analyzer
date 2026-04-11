@@ -39,6 +39,48 @@ Record first, then replay the same asset:
 
 Use this path when you want deterministic documentation assets or regression fixtures.
 
+## Log Measurements Over Time
+
+Use JSONL export when you want a structured time series that Python and the GUI can reuse without inventing a second measurement model.
+
+```bash
+./build/sdr-analyzer-cli \
+  --source simulator \
+  --frames 20 \
+  --export-jsonl measurements.jsonl \
+  --export-interval 2
+```
+
+What this gives you:
+- one metadata/header record with the starting source and processing config
+- one frame record per exported snapshot
+- frame-local detections and marker measurements logged over time
+
+Interpretation limits:
+- these values are useful for analysis, regression, and reproducibility
+- they are not calibrated instrument readings
+
+## Collect Diagnostics Intentionally
+
+Use runtime diagnostics when you need actionable backend or session evidence:
+
+```bash
+./build/sdr-analyzer-cli \
+  --source replay \
+  --input tests/fixtures/tone_cf32.sigmf-data \
+  --meta tests/fixtures/tone_cf32.sigmf-meta \
+  --frames 4 \
+  --log-level debug \
+  --log-json \
+  --log-file diagnostics.jsonl
+```
+
+Use this alongside `--export-jsonl` when you need both:
+- software diagnostics
+- measurement output
+
+Keep them as separate files.
+
 ## Public API Boundaries
 
 The stable public surfaces are:
