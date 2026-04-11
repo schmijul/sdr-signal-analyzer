@@ -5,11 +5,11 @@
 
 namespace sdr_analyzer::dsp {
 
-bool IsPowerOfTwo(std::size_t value) {
+bool is_power_of_two(std::size_t value) {
   return value > 0 && (value & (value - 1)) == 0;
 }
 
-std::vector<float> HannWindow(const std::size_t size) {
+std::vector<float> hann_window(const std::size_t size) {
   // A Hann window is a reasonable default for this analyzer because it reduces
   // spectral leakage without widening narrow peaks as aggressively as some
   // heavier windows used for measurement-oriented tooling.
@@ -25,9 +25,9 @@ std::vector<float> HannWindow(const std::size_t size) {
   return window;
 }
 
-void ComputeFft(std::vector<std::complex<float>> &data) {
+void compute_fft(std::vector<std::complex<float>> &data) {
   const std::size_t count = data.size();
-  if (!IsPowerOfTwo(count)) {
+  if (!is_power_of_two(count)) {
     throw std::invalid_argument("FFT size must be a power of two.");
   }
 

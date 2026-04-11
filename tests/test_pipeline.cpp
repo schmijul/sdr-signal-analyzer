@@ -197,6 +197,21 @@ void TestPeakHoldPreservesRecentPeak() {
           "Silence frame should not retain a strong live-spectrum peak.");
 }
 
+void TestInvalidFftSizeFallsBackToDefaultResolution() {
+  ProcessingConfig config;
+  config.fft_size = 1536;
+  Analyzer analyzer(config);
+
+  const auto snapshot = analyzer.Process(
+      30, 100e6, 2.4e6, GenerateTone(2048, 2.4e6, 100000.0, 0.8f), {});
+
+  Require(snapshot.spectrum.power_dbfs.size() == 2048,
+          "Invalid FFT size should fall back to the default FFT length.");
+  Require(std::abs(snapshot.spectrum.bin_resolution_hz - (2.4e6 / 2048.0)) <
+              1e-9,
+          "Fallback FFT size should preserve the default bin resolution.");
+}
+
 } // namespace
 
 int main() {
@@ -207,6 +222,7 @@ int main() {
     TestBurstClassification();
     TestMarkerMeasurement();
     TestPeakHoldPreservesRecentPeak();
+    TestInvalidFftSizeFallsBackToDefaultResolution();
   } catch (const std::exception &ex) {
     std::cerr << ex.what() << "\n";
     return 1;

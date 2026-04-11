@@ -25,15 +25,16 @@ constexpr std::size_t kMinPeakSpacingBins = 2;
 constexpr double kBandwidthRollOffDb = 26.0;
 constexpr std::size_t kDefaultFftSize = 2048;
 
-double ClampDb(const double value) {
+double clamp_dbfs(const double value) {
   return std::isfinite(value) ? std::max(value, kMinDb) : kMinDb;
 }
 
-std::size_t WrapIndex(const std::size_t index, const std::size_t count) {
+std::size_t wrap_fft_shift_index(const std::size_t index,
+                                 const std::size_t count) {
   return (index + count / 2U) % count;
 }
 
-double Quantile(std::vector<double> values, const double fraction) {
+double quantile(std::vector<double> values, const double fraction) {
   if (values.empty()) {
     return kMinDb;
   }
@@ -45,7 +46,7 @@ double Quantile(std::vector<double> values, const double fraction) {
   return values[position];
 }
 
-template <typename T> double Mean(const std::vector<T> &values) {
+template <typename T> double mean(const std::vector<T> &values) {
   if (values.empty()) {
     return 0.0;
   }
@@ -53,23 +54,24 @@ template <typename T> double Mean(const std::vector<T> &values) {
   return sum / static_cast<double>(values.size());
 }
 
-double StdDev(const std::vector<float> &values, const double mean) {
+double standard_deviation(const std::vector<float> &values,
+                          const double mean_value) {
   if (values.empty()) {
     return 0.0;
   }
   double accum = 0.0;
   for (const float value : values) {
-    const double delta = value - mean;
+    const double delta = value - mean_value;
     accum += delta * delta;
   }
   return std::sqrt(accum / static_cast<double>(values.size()));
 }
 
-std::vector<std::string> ClassifySignal(const double sample_rate_hz,
-                                        const double bandwidth_hz,
-                                        const double peak_power_dbfs,
-                                        const double noise_floor_dbfs,
-                                        const double burst_score) {
+std::vector<std::string>
+classify_signal_labels(const double sample_rate_hz, const double bandwidth_hz,
+                       const double peak_power_dbfs,
+                       const double noise_floor_dbfs,
+                       const double burst_score) {
   std::vector<std::string> labels;
   const double occupied_ratio =
       sample_rate_hz > 0.0 ? bandwidth_hz / sample_rate_hz : 0.0;
@@ -123,30 +125,32 @@ Analyzer::Process(const std::uint64_t sequence,
                                              std::complex<float>{0.0f, 0.0f});
   const std::size_t copy_count = std::min(config_.fft_size, iq_samples.size());
   for (std::size_t index = 0; index < copy_count; ++index) {
-    fft_input[index] = iq_samples[index] * window_[index];
+    fft_input[index] = iq_samples[index] * window_coefficients_[index];
   }
 
-  ComputeFft(fft_input);
+  compute_fft(fft_input);
 
-  std::vector<double> current_power(config_.fft_size, kMinDb);
+  std::vector<double> power_spectrum_dbfs(config_.fft_size, kMinDb);
   for (std::size_t index = 0; index < config_.fft_size; ++index) {
-    const auto shifted = fft_input[WrapIndex(index, config_.fft_size)];
+    const auto shifted =
+        fft_input[wrap_fft_shift_index(index, config_.fft_size)];
     const double magnitude = std::abs(shifted);
-    current_power[index] = ClampDb(
+    power_spectrum_dbfs[index] = clamp_dbfs(
         20.0 * std::log10((magnitude / static_cast<double>(config_.fft_size)) +
                           kEpsilon));
   }
 
   const double alpha =
       config_.averaging_factor <= 1.0 ? 1.0 : 1.0 / config_.averaging_factor;
-  for (std::size_t index = 0; index < current_power.size(); ++index) {
-    averaged_power_[index] = (alpha * current_power[index]) +
-                             ((1.0 - alpha) * averaged_power_[index]);
+  for (std::size_t index = 0; index < power_spectrum_dbfs.size(); ++index) {
+    averaged_power_dbfs_[index] =
+        (alpha * power_spectrum_dbfs[index]) +
+        ((1.0 - alpha) * averaged_power_dbfs_[index]);
     if (config_.peak_hold_enabled) {
-      peak_hold_power_[index] =
-          std::max(peak_hold_power_[index], current_power[index]);
+      peak_hold_power_dbfs_[index] = std::max(peak_hold_power_dbfs_[index],
+                                              power_spectrum_dbfs[index]);
     } else {
-      peak_hold_power_[index] = current_power[index];
+      peak_hold_power_dbfs_[index] = power_spectrum_dbfs[index];
     }
   }
 
@@ -154,9 +158,9 @@ Analyzer::Process(const std::uint64_t sequence,
   // baseline upward, while still keeping the estimate more conservative than a
   // median on busy frames.
   const double noise_floor_dbfs =
-      Quantile(current_power, kNoiseFloorQuantile);
+      quantile(power_spectrum_dbfs, kNoiseFloorQuantile);
   const double strongest_peak_dbfs =
-      *std::max_element(current_power.begin(), current_power.end());
+      *std::max_element(power_spectrum_dbfs.begin(), power_spectrum_dbfs.end());
 
   AnalyzerSnapshot snapshot;
   snapshot.sequence = sequence;
@@ -164,9 +168,9 @@ Analyzer::Process(const std::uint64_t sequence,
   snapshot.spectrum.bin_resolution_hz =
       sample_rate_hz /
       static_cast<double>(std::max<std::size_t>(1, config_.fft_size));
-  snapshot.spectrum.power_dbfs = current_power;
-  snapshot.spectrum.average_dbfs = averaged_power_;
-  snapshot.spectrum.peak_hold_dbfs = peak_hold_power_;
+  snapshot.spectrum.power_dbfs = power_spectrum_dbfs;
+  snapshot.spectrum.average_dbfs = averaged_power_dbfs_;
+  snapshot.spectrum.peak_hold_dbfs = peak_hold_power_dbfs_;
 
   const std::size_t display_samples =
       std::min(config_.display_samples, iq_samples.size());
@@ -179,9 +183,9 @@ Analyzer::Process(const std::uint64_t sequence,
     snapshot.time_domain.magnitude.push_back(std::abs(iq_samples[index]));
   }
 
-  const double mean_magnitude = Mean(snapshot.time_domain.magnitude);
+  const double mean_magnitude = mean(snapshot.time_domain.magnitude);
   const double stddev_magnitude =
-      StdDev(snapshot.time_domain.magnitude, mean_magnitude);
+      standard_deviation(snapshot.time_domain.magnitude, mean_magnitude);
   float max_magnitude = 0.0f;
   std::size_t burst_samples = 0;
   for (const float magnitude : snapshot.time_domain.magnitude) {
@@ -207,14 +211,16 @@ Analyzer::Process(const std::uint64_t sequence,
   snapshot.analysis.strongest_peak_dbfs = strongest_peak_dbfs;
   snapshot.analysis.burst_score = burst_score;
 
-  std::vector<double> smoothed_power(current_power.size(), kMinDb);
-  for (std::size_t index = 0; index < current_power.size(); ++index) {
+  std::vector<double> smoothed_power_dbfs(power_spectrum_dbfs.size(), kMinDb);
+  for (std::size_t index = 0; index < power_spectrum_dbfs.size(); ++index) {
     const std::size_t left = index == 0 ? 0 : index - 1;
-    const std::size_t right = std::min(index + 1, current_power.size() - 1);
+    const std::size_t right =
+        std::min(index + 1, power_spectrum_dbfs.size() - 1);
     // A small 3-point smoothing kernel reduces bin-to-bin jitter before local
     // peak selection without erasing narrowband peaks entirely.
-    smoothed_power[index] =
-        (current_power[left] + current_power[index] + current_power[right]) /
+    smoothed_power_dbfs[index] =
+        (power_spectrum_dbfs[left] + power_spectrum_dbfs[index] +
+         power_spectrum_dbfs[right]) /
         kSmoothingKernelWidth;
   }
 
@@ -227,21 +233,22 @@ Analyzer::Process(const std::uint64_t sequence,
         marker.center_frequency_hz - (marker.bandwidth_hz / 2.0);
     const double upper_hz =
         marker.center_frequency_hz + (marker.bandwidth_hz / 2.0);
-    std::vector<double> marker_bins;
-    for (std::size_t index = 0; index < current_power.size(); ++index) {
+    std::vector<double> marker_power_dbfs_bins;
+    for (std::size_t index = 0; index < power_spectrum_dbfs.size(); ++index) {
       const double offset_bins = static_cast<double>(index) -
                                  (static_cast<double>(config_.fft_size) / 2.0);
       const double frequency_hz =
           center_frequency_hz +
           (offset_bins * snapshot.spectrum.bin_resolution_hz);
       if (frequency_hz >= lower_hz && frequency_hz <= upper_hz) {
-        marker_bins.push_back(current_power[index]);
+        marker_power_dbfs_bins.push_back(power_spectrum_dbfs[index]);
       }
     }
-    if (!marker_bins.empty()) {
+    if (!marker_power_dbfs_bins.empty()) {
       measurement.peak_power_dbfs =
-          *std::max_element(marker_bins.begin(), marker_bins.end());
-      measurement.average_power_dbfs = Mean(marker_bins);
+          *std::max_element(marker_power_dbfs_bins.begin(),
+                            marker_power_dbfs_bins.end());
+      measurement.average_power_dbfs = mean(marker_power_dbfs_bins);
     } else {
       measurement.peak_power_dbfs = kMinDb;
       measurement.average_power_dbfs = kMinDb;
@@ -254,46 +261,54 @@ Analyzer::Process(const std::uint64_t sequence,
       // detections from adjacent FFT bins.
       std::max<std::size_t>(kMinPeakSpacingBins,
                             config_.minimum_peak_spacing_bins);
-  for (std::size_t index = spacing; index + spacing < smoothed_power.size();
+  for (std::size_t index = spacing;
+       index + spacing < smoothed_power_dbfs.size();
        ++index) {
-    const double value = smoothed_power[index];
-    if (value < noise_floor_dbfs + config_.detection_threshold_db) {
+    const double candidate_peak_dbfs = smoothed_power_dbfs[index];
+    if (candidate_peak_dbfs <
+        noise_floor_dbfs + config_.detection_threshold_db) {
       continue;
     }
-    const auto window_begin =
-        smoothed_power.begin() + static_cast<std::ptrdiff_t>(index - spacing);
-    const auto window_end = smoothed_power.begin() +
-                            static_cast<std::ptrdiff_t>(index + spacing + 1);
-    if (value < *std::max_element(window_begin, window_end)) {
+    const auto neighborhood_begin =
+        smoothed_power_dbfs.begin() +
+        static_cast<std::ptrdiff_t>(index - spacing);
+    const auto neighborhood_end =
+        smoothed_power_dbfs.begin() +
+        static_cast<std::ptrdiff_t>(index + spacing + 1);
+    if (candidate_peak_dbfs <
+        *std::max_element(neighborhood_begin, neighborhood_end)) {
       continue;
     }
 
-    double local_floor = value;
-    for (std::size_t lookaround = index - spacing;
-         lookaround <= index + spacing; ++lookaround) {
-      if (lookaround == index) {
+    double local_floor_dbfs = candidate_peak_dbfs;
+    for (std::size_t neighborhood_index = index - spacing;
+         neighborhood_index <= index + spacing; ++neighborhood_index) {
+      if (neighborhood_index == index) {
         continue;
       }
-      local_floor = std::min(local_floor, smoothed_power[lookaround]);
+      local_floor_dbfs = std::min(local_floor_dbfs,
+                                  smoothed_power_dbfs[neighborhood_index]);
     }
-    const double prominence = value - local_floor;
-    if (prominence < config_.detection_threshold_db) {
+    const double local_prominence_db =
+        candidate_peak_dbfs - local_floor_dbfs;
+    if (local_prominence_db < config_.detection_threshold_db) {
       continue;
     }
 
     // Use the stricter of the configured threshold and a -26 dB roll-off from
     // the local peak so occupied bandwidth stays tied to the signal shoulder
     // instead of expanding across the whole raised floor.
-    const double bandwidth_threshold =
+    const double occupied_bandwidth_threshold_dbfs =
         std::max(noise_floor_dbfs + config_.bandwidth_threshold_db,
-                 value - kBandwidthRollOffDb);
+                 candidate_peak_dbfs - kBandwidthRollOffDb);
     std::size_t left = index;
     std::size_t right = index;
-    while (left > 0 && current_power[left] > bandwidth_threshold) {
+    while (left > 0 &&
+           power_spectrum_dbfs[left] > occupied_bandwidth_threshold_dbfs) {
       --left;
     }
-    while (right + 1 < current_power.size() &&
-           current_power[right] > bandwidth_threshold) {
+    while (right + 1 < power_spectrum_dbfs.size() &&
+           power_spectrum_dbfs[right] > occupied_bandwidth_threshold_dbfs) {
       ++right;
     }
 
@@ -302,12 +317,12 @@ Analyzer::Process(const std::uint64_t sequence,
                                (static_cast<double>(config_.fft_size) / 2.0);
     detection.offset_hz = offset_bins * snapshot.spectrum.bin_resolution_hz;
     detection.center_frequency_hz = center_frequency_hz + detection.offset_hz;
-    detection.peak_power_dbfs = current_power[index];
+    detection.peak_power_dbfs = power_spectrum_dbfs[index];
     detection.bandwidth_hz = static_cast<double>(right - left + 1) *
                              snapshot.spectrum.bin_resolution_hz;
-    detection.labels = ClassifySignal(sample_rate_hz, detection.bandwidth_hz,
-                                      detection.peak_power_dbfs,
-                                      noise_floor_dbfs, burst_score);
+    detection.labels = classify_signal_labels(
+        sample_rate_hz, detection.bandwidth_hz, detection.peak_power_dbfs,
+        noise_floor_dbfs, burst_score);
     snapshot.analysis.detections.push_back(std::move(detection));
 
     index = right + spacing;
@@ -326,7 +341,7 @@ Analyzer::Process(const std::uint64_t sequence,
 }
 
 void Analyzer::EnsureState() {
-  if (!IsPowerOfTwo(config_.fft_size)) {
+  if (!is_power_of_two(config_.fft_size)) {
     // Invalid FFT sizes fall back to the small default used throughout the UI
     // and tests so sessions remain usable instead of failing hard.
     config_.fft_size = kDefaultFftSize;
@@ -334,12 +349,12 @@ void Analyzer::EnsureState() {
   if (config_.display_samples == 0) {
     config_.display_samples = config_.fft_size;
   }
-  window_ = HannWindow(config_.fft_size);
-  if (averaged_power_.size() != config_.fft_size) {
-    averaged_power_.assign(config_.fft_size, kMinDb);
+  window_coefficients_ = hann_window(config_.fft_size);
+  if (averaged_power_dbfs_.size() != config_.fft_size) {
+    averaged_power_dbfs_.assign(config_.fft_size, kMinDb);
   }
-  if (peak_hold_power_.size() != config_.fft_size) {
-    peak_hold_power_.assign(config_.fft_size, kMinDb);
+  if (peak_hold_power_dbfs_.size() != config_.fft_size) {
+    peak_hold_power_dbfs_.assign(config_.fft_size, kMinDb);
   }
 }
 

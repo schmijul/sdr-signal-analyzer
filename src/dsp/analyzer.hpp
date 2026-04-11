@@ -20,9 +20,11 @@ public:
 
 private:
   ProcessingConfig config_;
-  std::vector<float> window_;
-  std::vector<double> averaged_power_;
-  std::vector<double> peak_hold_power_;
+  // Window coefficients applied before the FFT to reduce leakage.
+  std::vector<float> window_coefficients_;
+  // Smoothed and peak-held spectra tracked in dBFS to match the public frames.
+  std::vector<double> averaged_power_dbfs_;
+  std::vector<double> peak_hold_power_dbfs_;
 
   void EnsureState();
 };
