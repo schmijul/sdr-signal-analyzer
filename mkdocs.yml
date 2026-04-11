@@ -21,6 +21,9 @@ markdown_extensions:
 
 nav:
   - Overview: index.md
+  - Notation Registry: notation.md
+  - Code-Symbol Mapping: code-symbol-mapping.md
+  - Terminology and Status Labels: terminology.md
   - Architecture: architecture.md
   - Public API: api.md
   - Trust and Limits: limitations.md
