@@ -8,6 +8,7 @@ Status:
 - integration exists in the codebase
 - build-time behavior is exercised without hardware
 - live-device behavior is `Prepared for validation` and `Pending lab validation`
+- a missing-Soapy build should fail with actionable startup diagnostics instead of implying device support was validated
 
 ## Build Requirements
 
@@ -61,4 +62,13 @@ Runtime failures should surface through `last_error()` and session diagnostics.
 
 ## Lab Protocol
 
-Use the checklist in [../hardware_validation_plan.md](../hardware_validation_plan.md) and [../hardware_validation_status.md](../hardware_validation_status.md) before changing the backend status to verified.
+Use the checklist in [../hardware_validation_plan.md](../hardware_validation_plan.md) and [../hardware_validation_status.md](../hardware_validation_status.md) before changing the backend status to `Verified`.
+
+Suggested failure bundle:
+
+```bash
+./build/sdr-analyzer-cli --source soapy --device-string "driver=rtlsdr" --center-hz 433920000 --sample-rate 2400000 --gain-db 20 --frames 20 --log-level debug --log-json --log-file diagnostics.jsonl
+./build/sdr-analyzer-cli --source soapy --device-string "driver=rtlsdr" --center-hz 433920000 --sample-rate 2400000 --gain-db 20 --frames 50 --export-jsonl measurements.jsonl --export-interval 5
+```
+
+Keep the diagnostics log and measurement export as separate artifacts so the software failure path and analyzer output remain distinguishable.

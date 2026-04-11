@@ -1,34 +1,7 @@
 # Hardware Validation Report Template
 
-- Date:
-- Operator:
-- Repository commit:
-- Machine:
-- OS:
-- Python version:
-- Compiler:
-- Backend:
-- Hardware model:
-- Firmware / FPGA / driver / SDK version:
-- Antenna / cabling notes:
-- Center frequency:
-- Sample rate:
-- Gain:
-- Additional bandwidth / clock / time settings:
-- Exact command:
-- GUI used:
-- Diagnostics log path:
-- JSONL export path:
-- Recording path:
-- Replay comparison command:
-- Observed behavior:
-- Screenshots:
-- Pass / fail:
-- Open issues:
+This file intentionally points to the canonical docs-visible template:
 
-## Required Evidence
+- [../hardware_validation_report_template.md](../hardware_validation_report_template.md)
 
-- attach the diagnostics log
-- attach the JSONL export if analysis output is relevant
-- record whether this was startup-only, short-stream, or longer stability validation
-- state explicitly whether the result is enough to move the backend status forward
+Use that page as the source of truth when preparing a new lab report. Keeping the full template content in one place avoids silent drift between the published documentation and the maintainer copy path.

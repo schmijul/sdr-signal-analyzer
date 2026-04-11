@@ -17,6 +17,7 @@ Stability note:
 - the integration point exists
 - the release docs should treat UHD as hardware-dependent until a real-device validation run is captured
 - the full lab protocol lives in [../hardware_validation_plan.md](../hardware_validation_plan.md)
+- a missing-UHD build should fail with actionable startup diagnostics instead of implying live-device validation
 
 ## Build Requirements
 
@@ -86,6 +87,8 @@ Expected artifacts:
 - environment details
 - replayable capture when practical
 
+Keep the diagnostics log and the measurement export as separate files. The diagnostics log is the software evidence trail; the JSONL export is the analyzer-output record.
+
 ## Failure Modes
 
 Common startup failures:
@@ -101,6 +104,12 @@ Use CLI diagnostics for reproducible failure capture:
 
 ```bash
 ./build/sdr-analyzer-cli --source uhd --device-args "type=b200" --center-hz 100000000 --sample-rate 2000000 --gain-db 25 --frames 10 --log-level debug --log-json --log-file diagnostics.jsonl
+```
+
+If the issue affects analyzer output as well as startup/runtime behavior, pair the diagnostics command above with:
+
+```bash
+./build/sdr-analyzer-cli --source uhd --device-args "type=b200" --center-hz 100000000 --sample-rate 2000000 --gain-db 25 --frames 50 --export-jsonl measurements.jsonl --export-interval 5
 ```
 
 ## Current Scope

@@ -3,24 +3,24 @@
 This page prepares live lab work. It does not claim that lab validation has already happened.
 
 Status labels:
-- `Verified now`: backed by repository-local, hardware-free evidence.
-- `Prepared for validation`: commands, templates, and protocols are ready.
-- `Pending lab validation`: real device evidence still required.
-- `Experimental`: available in code but not mature enough to describe as stable.
+- `Verified`: direct deterministic or mocked evidence exists in the repository now.
+- `Prepared for validation`: commands, templates, and protocols are present.
+- `Pending lab validation`: attached-device evidence has not yet been collected.
+- `Experimental`: intentionally heuristic or exploratory behavior.
 
 ## Current Status
 
 | Backend | Status | Evidence |
 | --- | --- | --- |
-| `simulator` | `Verified now` | deterministic tests, demo smoke, GUI smoke |
-| `replay` | `Verified now` | committed fixtures, replay regression tests, CLI export tests |
-| `rtl_tcp` | `Verified now` for the repo code path | mock transport test, deterministic disconnect/error handling |
-| `uhd` | `Prepared for validation`, `Pending lab validation` | build-time integration, backend-unavailable tests, lab protocol below |
-| `soapy` | `Prepared for validation`, `Pending lab validation` | build-time integration, lab protocol below |
+| `simulator` | `Verified` | deterministic tests, demo smoke, GUI smoke |
+| `replay` | `Verified` | committed fixtures, replay regression tests, CLI export tests |
+| `rtl_tcp` | `Verified` for the code path | mock transport test, deterministic disconnect/error handling |
+| `uhd` | `Prepared for validation`, `Pending lab validation` | optional backend implementation, backend-unavailable diagnostics tests, lab protocol below |
+| `soapy` | `Prepared for validation`, `Pending lab validation` | optional backend implementation, backend-unavailable diagnostics tests, lab protocol below |
 
 ## What Counts As Validation Evidence
 
-Acceptable evidence for moving `uhd` or `soapy` to verified:
+Acceptable evidence for moving `uhd` or `soapy` to `Verified`:
 - exact command lines used
 - attached logs from `--log-level info` or `debug`
 - saved JSONL measurement export from the same session
@@ -33,6 +33,8 @@ Not enough on its own:
 - screenshots without commands or metadata
 - code compiles with the SDK installed
 - a simulator or replay run
+- a diagnostics log without the corresponding command and environment metadata
+- a measurement export without the runtime diagnostics for the same session
 
 ## Lab Command Templates
 
@@ -109,11 +111,13 @@ Checks:
 5. save diagnostics log and JSONL export
 6. record a capture and replay it
 7. document clean shutdown behavior
+8. keep diagnostics and measurement export as separate files
 
 Failure capture:
 - exact command
 - `last_error()` text
 - diagnostics log path
+- measurement export path when analysis output matters
 - environment metadata
 
 ## SoapySDR Checklist
@@ -134,7 +138,7 @@ Checks:
 1. confirm the device is visible to Soapy tooling
 2. run startup smoke and short streaming run
 3. change center frequency and gain while observing motion
-4. save logs and JSONL export
+4. save diagnostics and JSONL export as separate artifacts
 5. compare a recorded capture through replay
 6. document driver-specific warnings or quirks
 
@@ -146,6 +150,6 @@ Before marking `uhd` or `soapy` as verified in README/docs:
 - meaningful spectrum motion is visible
 - shutdown is clean
 - exact commands are preserved
-- logs and JSONL exports are attached
+- diagnostics logs and JSONL exports are attached
 - environment and hardware metadata are recorded
 - at least one report based on [the hardware validation report template](hardware_validation_report_template.md) is committed or linked

@@ -4,7 +4,7 @@ This matrix separates what is verified in the repository now from what is only p
 
 ## Status Labels
 
-- `Verified`: direct deterministic or mocked evidence exists now.
+- `Verified`: direct deterministic or mocked evidence exists in the repository now.
 - `Prepared for validation`: protocol, commands, and templates are present.
 - `Pending lab validation`: attached-device evidence has not yet been collected.
 - `Experimental`: intentionally heuristic or exploratory behavior.
@@ -16,9 +16,9 @@ This matrix separates what is verified in the repository now from what is only p
 | --- | --- | --- | --- |
 | `simulator` | `Verified` | deterministic CLI, GUI, Python, and regression tests | none for the synthetic path |
 | `replay` | `Verified` | committed fixtures, replay/record tests, CLI replay smoke | more fixture classes can still be added |
-| `rtl_tcp` | `Verified` for the code path | mock transport test, source guide, troubleshooting notes | attached-server and live-RF environment notes remain operator-dependent |
-| `uhd` | `Prepared for validation`, `Pending lab validation` | optional backend implementation, documented checklist, command templates, result template | attached-device startup, short-stream stability, tuning/gain evidence, logs, exports, screenshots |
-| `soapy` | `Prepared for validation`, `Pending lab validation` | optional backend implementation, documented checklist, command templates, result template | attached-device startup, short-stream stability, tuning/gain evidence, logs, exports, screenshots |
+| `rtl_tcp` | `Verified` for the code path | mock transport test, source guide, troubleshooting notes | attached-server behavior, network conditions, and live-RF observations remain environment-dependent |
+| `uhd` | `Prepared for validation`, `Pending lab validation` | optional backend implementation, backend-unavailable diagnostics tests, documented checklist, command templates, canonical report template | attached-device startup, short-stream stability, tuning/gain evidence, logs, exports, screenshots |
+| `soapy` | `Prepared for validation`, `Pending lab validation` | optional backend implementation, backend-unavailable diagnostics tests, documented checklist, command templates, canonical report template | attached-device startup, short-stream stability, tuning/gain evidence, logs, exports, screenshots |
 
 ## Feature Class Matrix
 
@@ -33,7 +33,7 @@ This matrix separates what is verified in the repository now from what is only p
 
 Before changing UHD or SoapySDR status:
 1. run the backend checklist
-2. save diagnostics and JSONL export
+2. save diagnostics and JSONL export as separate artifacts
 3. record environment metadata
 4. fill in the report template
 5. link the completed report from docs or release notes

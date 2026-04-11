@@ -39,6 +39,8 @@ What does not count as validation evidence:
 - an anecdotal statement that “it seemed to work”
 - benchmark numbers from simulator or replay
 - CI results, because CI is intentionally hardware-free
+- a diagnostics log without the corresponding session command
+- a measurement export without runtime diagnostics for the same session
 
 ## Promotion Criteria
 
@@ -74,6 +76,8 @@ ctest --test-dir build --output-on-failure
 4. Fill in the report template:
    - [Hardware Validation Report Template](hardware_validation_report_template.md)
 
+The docs-visible page above is the canonical template. `docs/templates/hardware_validation_report_template.md` now exists only as a maintainer pointer so the template content does not drift in two places.
+
 ## Required Artifacts Per Session
 
 Save all of the following under a session directory such as `lab-notes/YYYY-MM-DD-backend-name/`:
@@ -83,6 +87,8 @@ Save all of the following under a session directory such as `lab-notes/YYYY-MM-D
 - screenshots
 - recorded capture paths
 - completed report markdown
+
+Keep runtime diagnostics and measurement export as separate files. The diagnostics log is the software evidence trail; `measurements.jsonl` is the analyzer-output record.
 
 ## Command Templates
 
@@ -115,3 +121,10 @@ Failure reproduction with structured diagnostics:
 ```bash
 ./build/sdr-analyzer-cli --source soapy --device-string "driver=rtlsdr" --center-hz 100000000 --sample-rate 2048000 --gain-db 20 --frames 10 --log-level debug --log-json --log-file diagnostics.jsonl
 ```
+
+Suggested failure bundle workflow for a live session:
+
+1. run the target command with diagnostics enabled
+2. rerun with `--export-jsonl` if analyzer output is relevant
+3. save the exact command line in `commands.txt`
+4. place `commands.txt`, diagnostics, exports, screenshots, and report notes in the same session directory

@@ -67,9 +67,13 @@ If you are building on Windows, note that the built-in `rtl_tcp` backend is not 
 
 Confirm the USB or network-connected device is visible to UHD and that the `--device-args` string matches the attached radio.
 
+If the project was built without UHD support, startup should fail immediately with contextual diagnostics instead of pretending the backend is available.
+
 ### SoapySDR
 
 Confirm the device driver is installed and the `--device-string` or `--device-args` value matches the backend you intend to use.
+
+If the project was built without SoapySDR support, startup should fail immediately with contextual diagnostics instead of implying that live-device validation exists.
 
 ## GUI Issues
 
@@ -128,6 +132,11 @@ If the issue affects analyzer output rather than startup, also collect:
 Interpretation:
 - `debug.jsonl` is the software log
 - `measurements.jsonl` is the analyzer measurement export
+
+For attached-device investigations, also save:
+- the exact command in `command.txt`
+- device, driver, firmware, SDK, and OS details
+- screenshots only as supporting evidence, never as the only evidence
 
 ## Fast Recovery Workflow
 

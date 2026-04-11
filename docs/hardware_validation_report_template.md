@@ -1,9 +1,9 @@
 # Hardware Validation Report Template
 
-Use this page when you want a docs-visible version of the lab report template.
+This docs-visible page is the canonical lab report template. Copy from this page when you prepare an attached-device validation report.
 
-The raw maintainer template is also kept at:
-- `docs/templates/hardware_validation_report_template.md`
+Maintainer note:
+- `docs/templates/hardware_validation_report_template.md` is only a pointer back to this canonical page so the template text does not drift in two places.
 
 - Date:
 - Operator:
@@ -36,4 +36,5 @@ The raw maintainer template is also kept at:
 - attach the diagnostics log
 - attach the JSONL export if analysis output is relevant
 - record whether this was startup-only, short-stream, or longer stability validation
+- record the exact command in `commands.txt` or inline in this report
 - state explicitly whether this report is enough to move the backend status forward
