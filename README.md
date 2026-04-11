@@ -11,6 +11,11 @@
 
 It is a reusable analysis backend, not a demodulator, protocol decoder, or measurement-grade instrument.
 
+The canonical notation, code-symbol mapping, and terminology live in the docs:
+- [Notation Registry](docs/notation.md)
+- [Code-Symbol Mapping](docs/code-symbol-mapping.md)
+- [Terminology and Status Labels](docs/terminology.md)
+
 ![Simulator-generated overview screenshot of the GUI. Not live RF validation.](docs/screenshots/overview.png)
 
 *The committed screenshots are simulator-generated documentation assets. They demonstrate the offscreen GUI layout and backend wiring, not live RF performance.*
@@ -40,12 +45,11 @@ Verified today:
 - Qt GUI startup smoke in offscreen mode
 - native C++ regression tests for DSP, session lifecycle, and recording/replay
 - structured session diagnostics surfaced through the C++ core, Python API, GUI, and CLI
-
 Status taxonomy used in this repository:
-- `Verified`: direct deterministic or mocked evidence exists in the repo now
-- `Prepared for validation`: protocol, commands, and templates are ready
-- `Pending lab validation`: requires attached-device evidence before stronger claims
-- `Experimental`: intentionally heuristic or otherwise not a stability promise
+- `Verified`: direct deterministic or mocked evidence exists in the repository now
+- `Prepared for validation`: protocol, commands, and templates are present
+- `Pending lab validation`: attached-device evidence has not yet been collected
+- `Experimental`: intentionally heuristic or exploratory behavior
 - `Not supported`: unavailable on the current platform or build
 
 `rtl_tcp` is the one backend with an explicit transport caveat: the built-in implementation uses POSIX sockets, is not authenticated, and is not encrypted. Treat it as a trusted-network workflow until a separate transport layer exists.
@@ -244,6 +248,9 @@ Compared with a pure live-viewer, this repository puts more emphasis on reproduc
 ## Documentation
 
 - [Documentation home](https://schmijul.github.io/sdr-signal-analyzer/)
+- [Notation Registry](docs/notation.md)
+- [Code-Symbol Mapping](docs/code-symbol-mapping.md)
+- [Terminology and Status Labels](docs/terminology.md)
 - [Architecture](docs/architecture.md)
 - [Public API](docs/api.md)
 - [Trust and limits](docs/limitations.md)

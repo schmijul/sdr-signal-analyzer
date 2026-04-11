@@ -2,12 +2,15 @@
 
 `sdr-signal-analyzer` is a C++-first SDR analysis stack with a Python GUI, deterministic replay, and optional live-device backends. The docs follow the same stable path recommended in the README: simulator, replay, `rtl_tcp`, then hardware-specific backends.
 
-![Simulator-generated overview screenshot of the GUI. Not live RF validation.](screenshots/overview.png)
+The canonical notation, code-symbol mapping, and terminology are documented separately so equations, code, and tests stay aligned.
 
-*This screenshot is generated from the simulator-backed GUI and is meant for reproducibility and layout reference, not live RF validation.*
+![Simulator-generated overview screenshot of the GUI. Not live RF validation.](screenshots/overview.png)
 
 ## Start Here
 
+- [Notation Registry](notation.md) for the canonical symbol table
+- [Code-Symbol Mapping](code-symbol-mapping.md) for the code-to-symbol crosswalk
+- [Terminology and Status Labels](terminology.md) for preferred wording and status labels
 - [Architecture](architecture.md) for system layout and data flow
 - [Public API](api.md) for the public C++ and Python surface
 - [Trust and Limits](limitations.md) for heuristic labels and failure modes
@@ -33,8 +36,8 @@
 
 ## Status Labels
 
-- `Verified`: direct deterministic or mocked evidence exists now.
-- `Prepared for validation`: commands, scripts, and templates are ready.
-- `Pending lab validation`: attached-device evidence still needs lab time.
+- `Verified`: direct deterministic or mocked evidence exists in the repository now.
+- `Prepared for validation`: protocol, commands, and templates are present.
+- `Pending lab validation`: attached-device evidence has not yet been collected.
 - `Experimental`: intentionally heuristic or exploratory behavior.
 - `Not supported`: unavailable on the current platform or build.
