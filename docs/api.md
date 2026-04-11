@@ -7,6 +7,13 @@ The stable public surface is intentionally small:
 
 Everything else should be treated as implementation detail unless documented otherwise.
 
+The compatibility policy for these surfaces lives in [API And Schema Stability](stability.md).
+
+Implementation locations for the public surface:
+- C++ declarations: `include/sdr_analyzer/config.hpp`, `include/sdr_analyzer/results.hpp`, `include/sdr_analyzer/session.hpp`
+- Python package exports: `python/sdr_signal_analyzer/__init__.py`
+- CLI implementation: `src/cli/main.cpp`
+
 ## Core Types
 
 The public C++ surface lives in `include/sdr_analyzer/`.
@@ -234,6 +241,11 @@ The helper writes the same JSONL schema used by the CLI export path:
 - first record: metadata/header
 - later records: one frame record per exported snapshot
 
+Implementation locations:
+- helper API and `FORMAT_VERSION`: `python/sdr_signal_analyzer/export.py`
+- CLI JSONL emission: `src/cli/main.cpp`
+- schema regression tests: `tests/test_cli_export.py`, `tests/test_export_helper.py`, `tests/export_schema.py`
+
 Metadata records include:
 - `format_version`
 - `source_config`
@@ -255,6 +267,14 @@ Frame records include:
 - `marker_measurements`
 
 Marker measurements in the export are frame-local values logged over time. The JSONL file is intended for analysis and reproducibility, not calibrated instrumentation.
+
+Schema policy:
+- the current CLI/common schema version is `sdr_signal_analyzer.measurements.v1`
+- the CLI/common `v1` record shapes are treated as exact and regression-tested
+- the Python helper may emit optional helper-only `session_metadata` in metadata records when the caller provides it
+- incompatible CLI/common schema changes require a new `format_version`
+
+See [API And Schema Stability](stability.md) for the full contract.
 
 ## CLI Surface
 
@@ -297,3 +317,18 @@ Internal:
 - transport-specific implementation classes
 
 This boundary matters because the release process should not promise stability for internals that can still change without notice.
+
+## Extension Boundaries
+
+Preferred extension points:
+- build automation around `AnalyzerSession` and the config/result types in `include/sdr_analyzer/`
+- consume snapshots from C++ or Python instead of scraping GUI internals
+- build measurement exporters on top of `python/sdr_signal_analyzer/export.py`
+- treat the documented CLI JSONL output as the file-format boundary, not the internal writer helpers in `src/cli/main.cpp`
+
+Non-contract areas:
+- files under `src/` that are not mirrored by public headers
+- GUI helper methods prefixed with `_`
+- internal DSP decomposition and source-factory structure
+
+This repository is still alpha. Public-facing changes are allowed, but they must be deliberate, documented, and regression-tested.

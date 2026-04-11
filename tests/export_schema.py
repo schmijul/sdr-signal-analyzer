@@ -1,3 +1,5 @@
+FORMAT_VERSION = "sdr_signal_analyzer.measurements.v1"
+
 METADATA_KEYS = {
     "record_type",
     "format_version",
@@ -5,6 +7,10 @@ METADATA_KEYS = {
     "source_config",
     "processing_config",
     "marker_definitions",
+}
+
+OPTIONAL_METADATA_KEYS = {
+    "session_metadata",
 }
 
 FRAME_KEYS = {

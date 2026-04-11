@@ -36,6 +36,7 @@ Expected outputs:
 - a successful `twine check dist/*`
 - `release-validation-ok` at the end of the run
 - release artifacts and docs wording remain aligned with [Release Checklist](release_checklist.md)
+- API and schema wording remain aligned with [Public API](api.md) and [API And Schema Stability](stability.md)
 
 ## Maintainer Checklist
 
@@ -45,12 +46,15 @@ Expected outputs:
 4. If Docker is available, run `python3 scripts/release_validate.py --skip-native --skip-python-tests --skip-docs --skip-package` only when you specifically need to re-run the fresh-install smoke in isolation.
 5. Build artifacts locally and inspect `dist/*`.
 6. Verify documentation pages and README links render locally with `mkdocs build --strict`.
-7. Check the backend status wording:
+7. Review public API and schema impact:
+   changes under `include/sdr_analyzer/`, `python/sdr_signal_analyzer/__init__.py`, `python/sdr_signal_analyzer/export.py`, or the measurement-export logic in `src/cli/main.cpp` require explicit docs and regression-test review.
+   If the CLI/common JSONL schema changes incompatibly, `format_version` must change as well.
+8. Check the backend status wording:
    `simulator`, `replay`, and `rtl_tcp` may be described as verified code paths only where repo evidence exists.
    `uhd` and `soapy` must remain `Prepared for validation` / `Pending lab validation` until real lab reports exist.
-8. Tag the release as `vX.Y.Z`.
-9. Confirm the GitHub Actions `Release` workflow uploads the sdist and wheels and that PyPI publishing succeeds.
-10. Verify the GitHub Release notes reflect the changelog and do not overstate hardware validation.
+9. Tag the release as `vX.Y.Z`.
+10. Confirm the GitHub Actions `Release` workflow uploads the sdist and wheels and that PyPI publishing succeeds.
+11. Verify the GitHub Release notes reflect the changelog and do not overstate hardware validation, API stability, or schema compatibility.
 
 Use the checkbox-driven companion page for sign-off:
 - [Release Checklist](release_checklist.md)
@@ -61,6 +65,7 @@ Use the checkbox-driven companion page for sign-off:
 - `CHANGELOG.md` remains Keep-a-Changelog style with an `Unreleased` section at the top.
 - Tag names use a `v` prefix such as `v0.1.0`.
 - Hardware readiness wording is release data, not marketing copy. Do not move `uhd` or `soapy` out of pending status without attached-hardware evidence.
+- JSONL measurement compatibility is governed by `format_version`. Do not ship an incompatible CLI/common schema change inside `sdr_signal_analyzer.measurements.v1`.
 
 ## Artifact Validation
 

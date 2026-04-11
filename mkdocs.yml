@@ -26,6 +26,7 @@ nav:
   - Terminology and Status Labels: terminology.md
   - Architecture: architecture.md
   - Public API: api.md
+  - API And Schema Stability: stability.md
   - Trust and Limits: limitations.md
   - Diagnostics: diagnostics.md
   - Quality Evidence: quality-evidence.md

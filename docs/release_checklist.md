@@ -23,6 +23,14 @@ Use this checklist when cutting a public release.
 - [ ] Confirm new docs pages are present in `mkdocs.yml`.
 - [ ] Confirm README links match the docs tree.
 - [ ] Confirm troubleshooting, testing, workflows, and release docs agree on commands.
+- [ ] Confirm [Public API](api.md) and [API And Schema Stability](stability.md) still match the shipped behavior.
+
+## API And Schema Review
+
+- [ ] Review changes under `include/sdr_analyzer/`, `python/sdr_signal_analyzer/__init__.py`, `python/sdr_signal_analyzer/export.py`, and `src/cli/main.cpp` for public-surface impact.
+- [ ] Confirm any public-facing behavior change has regression tests.
+- [ ] Confirm the CLI/common JSONL `format_version` is still correct for the shipped schema.
+- [ ] If the measurement schema changed incompatibly, confirm `format_version` changed and the docs explain the new contract.
 
 ## Packaging
 

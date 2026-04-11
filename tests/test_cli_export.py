@@ -13,6 +13,7 @@ from pathlib import Path
 from export_schema import (
     DETECTION_KEYS,
     FRAME_KEYS,
+    FORMAT_VERSION,
     MARKER_MEASUREMENT_KEYS,
     METADATA_KEYS,
 )
@@ -60,9 +61,12 @@ class CliExportTests(unittest.TestCase):
             self.assertGreaterEqual(len(records), 2)
             self.assertEqual(set(records[0].keys()), METADATA_KEYS)
             self.assertEqual(records[0]["record_type"], "metadata")
+            self.assertEqual(records[0]["format_version"], FORMAT_VERSION)
+            self.assertNotIn("session_metadata", records[0])
             for frame in records[1:]:
                 self.assertEqual(set(frame.keys()), FRAME_KEYS)
                 self.assertEqual(frame["record_type"], "frame")
+                self.assertEqual(frame["detection_count"], len(frame["detections"]))
                 for detection in frame["detections"]:
                     self.assertEqual(set(detection.keys()), DETECTION_KEYS)
                 for marker in frame["marker_measurements"]:
@@ -87,6 +91,8 @@ class CliExportTests(unittest.TestCase):
             records = load_jsonl(output)
             self.assertEqual(records[0]["source_config"]["kind"], "replay")
             self.assertEqual(records[0]["record_type"], "metadata")
+            self.assertEqual(records[0]["format_version"], FORMAT_VERSION)
+            self.assertNotIn("session_metadata", records[0])
             self.assertGreaterEqual(len(records[1:]), 1)
             sequences = [frame["sequence"] for frame in records[1:]]
             self.assertEqual(sequences, sorted(sequences))
