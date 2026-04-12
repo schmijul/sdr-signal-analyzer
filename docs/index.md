@@ -31,10 +31,11 @@ The canonical notation, code-symbol mapping, and terminology are documented sepa
 
 ## Fast Paths
 
-- Install with `python3 -m venv .venv` followed by `python -m pip install -e ".[gui]"`
+- On Ubuntu or Debian, install prerequisites with `sudo apt install -y cmake g++ libegl1 libxcb-cursor0 libxkbcommon-x11-0 ninja-build python3-dev`
+- Install with `python -m pip install ".[gui]"`
 - Run the demo with `sdr-signal-analyzer-demo`
-- Run the simulator CLI with `./build/sdr-analyzer-cli --source simulator --frames 20`
-- Replay the committed fixture with `./build/sdr-analyzer-cli --source replay --input tests/fixtures/tone_cf32.sigmf-data --meta tests/fixtures/tone_cf32.sigmf-meta --frames 4`
+- Run the simulator CLI with `sdr-analyzer-cli --source simulator --frames 20`
+- Replay the committed fixture with `sdr-analyzer-cli --source replay --input tests/fixtures/tone_cf32.sigmf-data --meta tests/fixtures/tone_cf32.sigmf-meta --frames 4`
 
 ## Status Labels
 

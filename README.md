@@ -76,17 +76,17 @@ The analyzer reports useful hints, not guaranteed classifications. Detection acc
 
 ### 1. Install
 
+On Ubuntu or Debian, install the native prerequisites first:
+
 ```bash
-python3 -m venv .venv
-. .venv/bin/activate
-python -m pip install --upgrade pip
-python -m pip install -e ".[gui]"
+sudo apt install -y cmake g++ libegl1 libxcb-cursor0 libxkbcommon-x11-0 ninja-build python3-dev
+python -m pip install ".[gui]"
 ```
 
 Expected result:
-- the editable install succeeds
+- the package installs with `pip`
 - the Python bindings import successfully
-- the Qt GUI dependencies are available in the venv
+- the GUI and CLI commands are available on your `PATH`
 
 ### 2. Run the one-command demo
 
@@ -99,24 +99,26 @@ Expected result:
 - detections print to stdout
 - the command exits successfully after a short run
 
-### 3. Run the simulator CLI
+At this point you already have a hardware-free, working install.
+
+Choose the next path that matches what you want to do:
+
+### 3. Inspect the analyzer from the CLI
 
 ```bash
-cmake -S . -B build
-cmake --build build
-./build/sdr-analyzer-cli --source simulator --frames 20
+sdr-analyzer-cli --source simulator --frames 20
 ```
 
 Expected result:
 - frames print with `noise=` and `detections=`
 - no live SDR hardware is required
 
-### 4. Log measurements as JSONL
+### 4. Export structured measurements
 
-Log structured measurements over time as JSONL:
+Once the CLI is installed, you can log structured measurements as JSONL:
 
 ```bash
-./build/sdr-analyzer-cli \
+sdr-analyzer-cli \
   --source simulator \
   --frames 20 \
   --export-jsonl measurements.jsonl \
@@ -131,7 +133,7 @@ Expected result:
 ### 5. Replay a committed fixture
 
 ```bash
-./build/sdr-analyzer-cli \
+sdr-analyzer-cli \
   --source replay \
   --input tests/fixtures/tone_cf32.sigmf-data \
   --meta tests/fixtures/tone_cf32.sigmf-meta \
@@ -142,10 +144,10 @@ Expected result:
 - the session produces repeatable detections near `100.15 MHz`
 - replay exits cleanly at end of stream
 
-### 6. Connect to `rtl_tcp`
+### 6. Connect to `rtl_tcp` when you want live network input
 
 ```bash
-./build/sdr-analyzer-cli \
+sdr-analyzer-cli \
   --source rtl_tcp \
   --host 127.0.0.1 \
   --port 1234 \

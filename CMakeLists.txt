@@ -67,6 +67,8 @@ endif()
 add_executable(sdr-analyzer-cli src/cli/main.cpp)
 target_link_libraries(sdr-analyzer-cli PRIVATE sdr_analyzer)
 
+install(TARGETS sdr-analyzer-cli RUNTIME DESTINATION bin)
+
 if(SDR_ANALYZER_BUILD_PYTHON AND pybind11_FOUND AND Python3_FOUND)
   pybind11_add_module(_sdr_signal_analyzer python/bindings.cpp)
   target_link_libraries(_sdr_signal_analyzer PRIVATE sdr_analyzer)
@@ -194,6 +196,16 @@ if(Python3_FOUND)
       ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_cli_export.py
   )
   set_tests_properties(cli_export PROPERTIES TIMEOUT 20)
+
+  add_test(
+    NAME cli_wrapper
+    COMMAND
+      ${CMAKE_COMMAND} -E env
+      PYTHONPATH=${CMAKE_CURRENT_SOURCE_DIR}/python
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_cli_wrapper.py
+  )
+  set_tests_properties(cli_wrapper PROPERTIES TIMEOUT 20)
 endif()
 
 if(Python3_FOUND AND TARGET _sdr_signal_analyzer)

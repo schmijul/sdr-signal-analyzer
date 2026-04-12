@@ -9,10 +9,8 @@ This page collects the failure modes that are most likely to block a first run.
 Use a Python environment that has the development dependencies installed:
 
 ```bash
-python3 -m venv .venv
-. .venv/bin/activate
-python -m pip install --upgrade pip
-python -m pip install -e ".[gui]"
+sudo apt install -y cmake g++ libegl1 libxcb-cursor0 libxkbcommon-x11-0 ninja-build python3-dev
+python -m pip install ".[gui]"
 ```
 
 If you are building from source outside a venv, make sure the system Python development headers are installed.
@@ -22,7 +20,7 @@ If you are building from source outside a venv, make sure the system Python deve
 Install the GUI extra:
 
 ```bash
-python -m pip install -e ".[gui]"
+python -m pip install ".[gui]"
 ```
 
 If the GUI still fails to start, confirm that `PySide6` is installed in the active environment and that `QT_QPA_PLATFORM=offscreen` is set for headless smoke tests.
@@ -36,7 +34,7 @@ Use `python3` to create the virtual environment and then use the venv interprete
 ```bash
 python3 -m venv .venv
 . .venv/bin/activate
-python -m pip install -e ".[gui]"
+python -m pip install ".[gui]"
 ```
 
 ### `mkdocs` is not installed
@@ -56,7 +54,7 @@ python -m pip install mkdocs mkdocs-material
 Check host, port, and server availability:
 
 ```bash
-./build/sdr-analyzer-cli --source rtl_tcp --host 127.0.0.1 --port 1234
+sdr-analyzer-cli --source rtl_tcp --host 127.0.0.1 --port 1234
 ```
 
 If the session exits immediately, confirm that the remote server is running and that the chosen port matches the server configuration.

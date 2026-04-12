@@ -31,12 +31,14 @@ cmake -S . -B build-install -G Ninja \
 cmake --build build-install
 ctest --test-dir build-install --output-on-failure
 
-python -m pip install -e ".[gui]"
+python -m pip install ".[gui]"
 python -m sdr_signal_analyzer.demo --frames 4
 sdr-signal-analyzer-demo --frames 4
+sdr-analyzer-cli --source simulator --frames 4
 
 pyproject-build
 twine check dist/*
 python -m pip install --force-reinstall dist/*.whl
 python -m sdr_signal_analyzer.demo --frames 4
 sdr-signal-analyzer-demo --frames 4
+sdr-analyzer-cli --source simulator --frames 4

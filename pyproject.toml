@@ -62,6 +62,7 @@ Changelog = "https://github.com/schmijul/sdr-signal-analyzer/blob/main/CHANGELOG
 Releases = "https://github.com/schmijul/sdr-signal-analyzer/releases"
 
 [project.scripts]
+sdr-analyzer-cli = "sdr_signal_analyzer.cli:main"
 sdr-signal-analyzer-gui = "sdr_signal_analyzer.gui:main"
 sdr-signal-analyzer-demo = "sdr_signal_analyzer.demo:main"
 
