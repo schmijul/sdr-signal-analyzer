@@ -65,8 +65,10 @@ def main() -> int:
         cwd=repo_root,
         env=env,
     )
+    ran_example = False
     extension_candidates = sorted((repo_root / "python" / "sdr_signal_analyzer").glob("_sdr_signal_analyzer*.so"))
     if extension_candidates:
+        ran_example = True
         _run(
             [*coverage_cmd, "run", "--parallel-mode", "examples/run_simulator.py"],
             cwd=repo_root,
@@ -75,6 +77,9 @@ def main() -> int:
     else:
         print("+ skip examples/run_simulator.py (no extension artifact found)", flush=True)
     _run([*coverage_cmd, "combine"], cwd=repo_root, env=env)
+    if not ran_example:
+        print("+ skip coverage reporting (no example coverage data)", flush=True)
+        return 0
     package_include = "python/sdr_signal_analyzer/*"
     _run(
         [*coverage_cmd, "html", "--include", package_include, "-d", str(html_dir)],
