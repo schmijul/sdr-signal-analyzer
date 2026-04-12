@@ -199,7 +199,7 @@ if(Python3_FOUND)
     NAME demo
     COMMAND
       ${CMAKE_COMMAND} -E env
-      PYTHONPATH=${CMAKE_CURRENT_SOURCE_DIR}/python:${CMAKE_CURRENT_SOURCE_DIR}/python/sdr_signal_analyzer
+      PYTHONPATH=${CMAKE_CURRENT_SOURCE_DIR}/python:$<TARGET_FILE_DIR:_sdr_signal_analyzer>
       ${Python3_EXECUTABLE}
       ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_demo.py
   )
