@@ -58,6 +58,12 @@ sdr-signal-analyzer-gui
 
 The GUI starts with the simulator profile selected by default, so no hardware setup is required for a first run.
 
+Prefer the non-GUI one-liner?
+
+```bash
+sdr-analyzer-cli --source replay --input tests/fixtures/tone_cf32.sigmf-data --meta tests/fixtures/tone_cf32.sigmf-meta --frames 4
+```
+
 ## Example Output
 
 ![Replay-backed FFT example](docs/img/example_fft.png)
