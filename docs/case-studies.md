@@ -44,6 +44,21 @@ What it does not prove:
 - this is not a real over-the-air ISM capture
 - this does not validate the analyzer against live RF conditions
 
+## Marker Editor
+
+![Marker editor dialog with editable rows. Not live RF validation.](screenshots/marker_editor.png)
+
+*The table-based marker editor used to add, remove, and rename markers before applying them to the session.*
+
+What it proves:
+- the GUI can expose marker management in a dedicated modal dialog
+- marker names stay human-readable in the UI while the backend still receives the numeric marker spans
+- row-based editing is easier to document than the old inline fields
+
+Status:
+- provenance: `simulator`
+- evidence class: `Verified` for GUI interaction coverage
+
 ## Narrowband Fixture
 
 ![Simulator-generated narrowband focus screenshot of the GUI. Not live RF validation.](screenshots/narrowband_focus.png)
@@ -129,6 +144,7 @@ QT_QPA_PLATFORM=offscreen PYTHONPATH=python python scripts/generate_portfolio_as
 ```
 
 Use `--all --output-dir docs/screenshots` if you want to refresh the full committed set in one pass.
+The marker editor screenshot is captured directly from the dialog widget and should be regenerated with a small offscreen helper when the table layout changes.
 
 ## What Still Improves The Portfolio
 

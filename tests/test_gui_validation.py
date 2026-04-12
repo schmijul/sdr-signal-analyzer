@@ -13,7 +13,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 try:
     from PySide6 import QtWidgets
     from sdr_signal_analyzer import SourceKind
-    from sdr_signal_analyzer.gui import MainWindow
+    from sdr_signal_analyzer.gui import MainWindow, MarkerEditorDialog, MarkerEntry
 
     GUI_AVAILABLE = True
 except ImportError:
@@ -92,16 +92,32 @@ class GuiValidationTests(unittest.TestCase):
             "Input error: Replay Input is required.",
         )
 
-    def test_invalid_marker_input_is_rejected(self) -> None:
-        self.window._marker_center_edit.setText("100000000")
-        self.window._marker_bw_edit.setText("abc")
-        self.window._update_marker()
-        self.assertEqual(len(self.window._markers), 1)
-        self.assertEqual(self.window._markers[0].center_frequency_hz, 100000000.0)
-        self.assertEqual(self.window._markers[0].bandwidth_hz, 200000.0)
+    def test_marker_editor_rejects_invalid_input(self) -> None:
+        dialog = MarkerEditorDialog(
+            [MarkerEntry("Marker 1", 100000000.0, 200000.0)],
+            self.window,
+        )
+        dialog._table.item(0, 1).setText("abc")
+        dialog.accept()
+        self.assertEqual(dialog.result(), QtWidgets.QDialog.DialogCode.Rejected)
         self.assertEqual(
-            self.window._status_label.text(),
-            "Input error: Marker BW must be a number.",
+            dialog._message_label.text(),
+            "Row 1 Center Hz must be a number.",
+        )
+
+    def test_marker_entries_can_be_updated_programmatically(self) -> None:
+        self.window.set_marker_entries(
+            [
+                MarkerEntry("Primary", 100000000.0, 200000.0),
+                MarkerEntry("Backup", 100250000.0, 50000.0),
+            ]
+        )
+        self.assertEqual(len(self.window._marker_entries), 2)
+        self.assertEqual(self.window._marker_entries[0].name, "Primary")
+        self.assertEqual(self.window._markers[1].bandwidth_hz, 50000.0)
+        self.assertEqual(
+            self.window._marker_summary_label.text(),
+            "2 markers configured",
         )
 
     def test_default_state_uses_simulator_profile(self) -> None:

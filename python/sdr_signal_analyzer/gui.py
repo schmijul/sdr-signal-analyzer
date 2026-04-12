@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 import sys
 from math import isfinite
 from typing import Sequence
@@ -78,6 +79,189 @@ def _format_dbfs(value: float) -> str:
 
 _STATUS_STYLE = "color: #d8dbe2; font-weight: 600;"
 _STATUS_ERROR_STYLE = "color: #ff8a80; font-weight: 600;"
+
+
+@dataclass(frozen=True)
+class MarkerEntry:
+    """Editable GUI representation of a marker."""
+
+    name: str
+    center_frequency_hz: float
+    bandwidth_hz: float
+
+
+class MarkerEditorDialog(QtWidgets.QDialog):
+    """Modal editor for marker names and frequency spans."""
+
+    def __init__(
+        self,
+        markers: Sequence[MarkerEntry],
+        parent: QtWidgets.QWidget | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self.setWindowTitle("Edit Markers")
+        self.resize(760, 360)
+        self._markers = list(markers)
+
+        self._table = QtWidgets.QTableWidget(0, 3, self)
+        self._table.setHorizontalHeaderLabels(["Name", "Center Hz", "Bandwidth Hz"])
+        self._table.horizontalHeader().setStretchLastSection(True)
+        self._table.verticalHeader().setVisible(False)
+        self._table.setAlternatingRowColors(True)
+        self._table.setSelectionBehavior(
+            QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows
+        )
+        self._table.setSelectionMode(
+            QtWidgets.QAbstractItemView.SelectionMode.ExtendedSelection
+        )
+        self._table.setEditTriggers(
+            QtWidgets.QAbstractItemView.EditTrigger.DoubleClicked
+            | QtWidgets.QAbstractItemView.EditTrigger.SelectedClicked
+            | QtWidgets.QAbstractItemView.EditTrigger.EditKeyPressed
+        )
+
+        self._message_label = QtWidgets.QLabel("")
+        self._message_label.setWordWrap(True)
+        self._message_label.setStyleSheet(_STATUS_ERROR_STYLE)
+        self._message_label.setVisible(False)
+
+        self._add_button = QtWidgets.QPushButton("Add Row")
+        self._add_button.clicked.connect(self._add_row)
+        self._remove_button = QtWidgets.QPushButton("Remove Selected")
+        self._remove_button.clicked.connect(self._remove_selected_rows)
+
+        self._button_box = QtWidgets.QDialogButtonBox(
+            QtWidgets.QDialogButtonBox.StandardButton.Ok
+            | QtWidgets.QDialogButtonBox.StandardButton.Cancel
+        )
+        self._button_box.accepted.connect(self.accept)
+        self._button_box.rejected.connect(self.reject)
+
+        layout = QtWidgets.QVBoxLayout(self)
+        layout.addWidget(
+            QtWidgets.QLabel(
+                "Edit marker rows directly. The name stays in the GUI; frequency values "
+                "are forwarded to the session."
+            )
+        )
+        layout.addWidget(self._table)
+
+        toolbar = QtWidgets.QHBoxLayout()
+        toolbar.addWidget(self._add_button)
+        toolbar.addWidget(self._remove_button)
+        toolbar.addStretch(1)
+        layout.addLayout(toolbar)
+        layout.addWidget(self._message_label)
+        layout.addWidget(self._button_box)
+
+        for marker in self._markers:
+            self._add_row(marker)
+        if not self._markers:
+            self._add_row(
+                MarkerEntry("Marker 1", DEFAULT_MARKER_CENTER_HZ, DEFAULT_MARKER_BANDWIDTH_HZ)
+            )
+
+    def _set_message(self, message: str = "") -> None:
+        self._message_label.setText(message)
+        self._message_label.setVisible(bool(message))
+
+    @staticmethod
+    def _new_item(
+        text: str,
+        *,
+        alignment: QtCore.Qt.AlignmentFlag | None = None,
+    ) -> QtWidgets.QTableWidgetItem:
+        item = QtWidgets.QTableWidgetItem(text)
+        item.setFlags(
+            QtCore.Qt.ItemFlag.ItemIsSelectable
+            | QtCore.Qt.ItemFlag.ItemIsEnabled
+            | QtCore.Qt.ItemFlag.ItemIsEditable
+        )
+        if alignment is not None:
+            item.setTextAlignment(alignment)
+        return item
+
+    def _add_row(self, marker: MarkerEntry | None = None) -> None:
+        row = self._table.rowCount()
+        self._table.insertRow(row)
+        marker = marker or MarkerEntry(
+            f"Marker {row + 1}",
+            DEFAULT_MARKER_CENTER_HZ,
+            DEFAULT_MARKER_BANDWIDTH_HZ,
+        )
+        self._table.setItem(row, 0, self._new_item(marker.name))
+        self._table.setItem(
+            row,
+            1,
+            self._new_item(
+                f"{marker.center_frequency_hz:.6f}",
+                alignment=QtCore.Qt.AlignmentFlag.AlignRight
+                | QtCore.Qt.AlignmentFlag.AlignVCenter,
+            ),
+        )
+        self._table.setItem(
+            row,
+            2,
+            self._new_item(
+                f"{marker.bandwidth_hz:.6f}",
+                alignment=QtCore.Qt.AlignmentFlag.AlignRight
+                | QtCore.Qt.AlignmentFlag.AlignVCenter,
+            ),
+        )
+
+    def _remove_selected_rows(self) -> None:
+        rows = sorted(
+            {index.row() for index in self._table.selectionModel().selectedRows()},
+            reverse=True,
+        )
+        for row in rows:
+            self._table.removeRow(row)
+        self._set_message()
+
+    def _read_cell_text(self, row: int, column: int, label: str) -> str:
+        item = self._table.item(row, column)
+        if item is None:
+            raise ValueError(f"Row {row + 1} {label} is required.")
+        text = item.text().strip()
+        if not text:
+            raise ValueError(f"Row {row + 1} {label} is required.")
+        return text
+
+    def _collect_markers(self) -> list[MarkerEntry]:
+        markers: list[MarkerEntry] = []
+        for row in range(self._table.rowCount()):
+            name = self._read_cell_text(row, 0, "Name")
+            center = self._read_cell_text(row, 1, "Center Hz")
+            bandwidth = self._read_cell_text(row, 2, "Bandwidth Hz")
+            try:
+                center_frequency_hz = float(center)
+            except ValueError as exc:
+                raise ValueError(f"Row {row + 1} Center Hz must be a number.") from exc
+            try:
+                bandwidth_hz = float(bandwidth)
+            except ValueError as exc:
+                raise ValueError(
+                    f"Row {row + 1} Bandwidth Hz must be a number."
+                ) from exc
+            if not isfinite(center_frequency_hz) or center_frequency_hz <= 0.0:
+                raise ValueError(f"Row {row + 1} Center Hz must be greater than 0.")
+            if not isfinite(bandwidth_hz) or bandwidth_hz <= 0.0:
+                raise ValueError(f"Row {row + 1} Bandwidth Hz must be greater than 0.")
+            markers.append(MarkerEntry(name, center_frequency_hz, bandwidth_hz))
+        return markers
+
+    def markers(self) -> list[MarkerEntry]:
+        """Return the validated marker rows."""
+
+        return list(self._markers)
+
+    def accept(self) -> None:  # noqa: D401
+        try:
+            self._markers = self._collect_markers()
+        except ValueError as exc:
+            self._set_message(str(exc))
+            return
+        super().accept()
 
 
 class PlotCanvas(QtWidgets.QWidget):
@@ -454,9 +638,10 @@ class MainWindow(QtWidgets.QMainWindow):
         processing.display_samples = DEFAULT_DISPLAY_SAMPLES
 
         self._session = AnalyzerSession(source, processing)
-        self._markers = [Marker()]
-        self._markers[0].center_frequency_hz = source.center_frequency_hz
-        self._markers[0].bandwidth_hz = DEFAULT_MARKER_BANDWIDTH_HZ
+        self._marker_entries = [
+            MarkerEntry("Marker 1", source.center_frequency_hz, DEFAULT_MARKER_BANDWIDTH_HZ)
+        ]
+        self._markers = self._marker_entries_to_markers(self._marker_entries)
         return source, processing
 
     def _create_controls(self, processing: ProcessingConfig) -> None:
@@ -484,12 +669,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self._bandwidth_edit = QtWidgets.QLineEdit(DEFAULT_EMPTY_TEXT)
         self._clock_source_edit = QtWidgets.QLineEdit(DEFAULT_EMPTY_TEXT)
         self._time_source_edit = QtWidgets.QLineEdit(DEFAULT_EMPTY_TEXT)
-        self._marker_center_edit = QtWidgets.QLineEdit(str(DEFAULT_MARKER_CENTER_HZ))
-        self._marker_bw_edit = QtWidgets.QLineEdit(str(DEFAULT_MARKER_BANDWIDTH_HZ))
         self._start_button = QtWidgets.QPushButton("Start")
         self._start_button.clicked.connect(self._toggle_stream)
         self._marker_button = QtWidgets.QPushButton("Update Marker")
         self._marker_button.clicked.connect(self._update_marker)
+        self._marker_summary_label = QtWidgets.QLabel("")
+        self._marker_summary_label.setObjectName("markerSummary")
 
     def _build_controls_layout(self) -> None:
         controls = QtWidgets.QGridLayout()
@@ -534,9 +719,6 @@ class MainWindow(QtWidgets.QMainWindow):
         )
         add_control(14, "Clock Source", self._clock_source_edit, {SourceKind.UHD})
         add_control(15, "Time Source", self._time_source_edit, {SourceKind.UHD})
-        add_control(16, "Marker Hz", self._marker_center_edit)
-        add_control(17, "Marker BW", self._marker_bw_edit)
-
         loop_label = QtWidgets.QLabel("Replay Loop")
         controls.addWidget(loop_label, 4, 0)
         controls.addWidget(self._loop_checkbox, 4, 1)
@@ -545,8 +727,10 @@ class MainWindow(QtWidgets.QMainWindow):
         )
 
         controls.addWidget(self._start_button, 4, 2, 1, 2)
-        controls.addWidget(self._marker_button, 4, 4, 1, 2)
+        controls.addWidget(self._marker_summary_label, 4, 4)
+        controls.addWidget(self._marker_button, 4, 5)
         self._controls_layout = controls
+        self._refresh_marker_summary()
 
     def _create_visualization_widgets(self) -> None:
         self._spectrum_plot = PlotCanvas(
@@ -596,6 +780,10 @@ class MainWindow(QtWidgets.QMainWindow):
             }
             QPushButton:hover {
                 border-color: #4c5668;
+            }
+            QLabel#markerSummary {
+                color: #9aa4b5;
+                padding: 4px 0;
             }
             QHeaderView::section {
                 background: #1e2430;
@@ -699,8 +887,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self._channel_edit.setValidator(
             QtGui.QIntValidator(0, 2_147_483_647, self)
         )
-        self._marker_center_edit.setValidator(positive_double())
-        self._marker_bw_edit.setValidator(positive_double())
         self._bandwidth_edit.setValidator(positive_double())
 
     def _set_status(self, message: str, *, error: bool = False) -> None:
@@ -708,6 +894,70 @@ class MainWindow(QtWidgets.QMainWindow):
             _STATUS_ERROR_STYLE if error else _STATUS_STYLE
         )
         self._status_label.setText(message)
+
+    def _marker_entries_to_markers(
+        self, entries: Sequence[MarkerEntry]
+    ) -> list[Marker]:
+        markers: list[Marker] = []
+        for entry in entries:
+            marker = Marker()
+            marker.center_frequency_hz = entry.center_frequency_hz
+            marker.bandwidth_hz = entry.bandwidth_hz
+            markers.append(marker)
+        return markers
+
+    @staticmethod
+    def _validate_marker_entry(entry: MarkerEntry, index: int) -> MarkerEntry:
+        name = entry.name.strip()
+        if not name:
+            raise ValueError(f"Marker row {index + 1} Name is required.")
+        if not isfinite(entry.center_frequency_hz) or entry.center_frequency_hz <= 0.0:
+            raise ValueError(f"Marker row {index + 1} Center Hz must be greater than 0.")
+        if not isfinite(entry.bandwidth_hz) or entry.bandwidth_hz <= 0.0:
+            raise ValueError(
+                f"Marker row {index + 1} Bandwidth Hz must be greater than 0."
+            )
+        return MarkerEntry(name, entry.center_frequency_hz, entry.bandwidth_hz)
+
+    def _refresh_marker_summary(self) -> None:
+        count = len(getattr(self, "_marker_entries", ()))
+        if count == 0:
+            self._marker_summary_label.setText("No markers")
+        elif count == 1:
+            marker = self._marker_entries[0]
+            self._marker_summary_label.setText(
+                f"1 marker: {marker.name}"
+            )
+        else:
+            self._marker_summary_label.setText(f"{count} markers configured")
+
+    def set_marker_entries(self, entries: Sequence[MarkerEntry]) -> None:
+        """Replace the editable marker list and sync it to the session."""
+
+        self._marker_entries = [
+            self._validate_marker_entry(entry, index)
+            for index, entry in enumerate(entries)
+        ]
+        self._markers = self._marker_entries_to_markers(self._marker_entries)
+        self._session.set_markers(self._markers)
+        self._refresh_marker_summary()
+
+    def _open_marker_editor(self) -> None:
+        dialog = MarkerEditorDialog(self._marker_entries, self)
+        if dialog.exec() != QtWidgets.QDialog.DialogCode.Accepted:
+            return
+        self.set_marker_entries(dialog.markers())
+        if self._markers:
+            summary = ", ".join(entry.name for entry in self._marker_entries[:3])
+            self._set_status(
+                f"Markers updated: {summary}"
+                + (" ..." if len(self._marker_entries) > 3 else "")
+            )
+        else:
+            self._set_status("Markers cleared")
+
+    def _update_marker(self) -> None:
+        self._open_marker_editor()
 
     def _report_input_error(self, message: str) -> None:
         self._set_status(f"Input error: {message}", error=True)
@@ -779,34 +1029,6 @@ class MainWindow(QtWidgets.QMainWindow):
         processing.display_samples = min(processing.fft_size, DEFAULT_DISPLAY_SAMPLES)
         return processing
 
-    def _update_marker(self) -> None:
-        try:
-            marker = Marker()
-            marker.center_frequency_hz = self._read_float(
-                self._marker_center_edit,
-                "Marker Hz",
-                minimum=0.0,
-                maximum=1.0e12,
-            )
-            if marker.center_frequency_hz <= 0.0:
-                raise ValueError("Marker Hz must be greater than 0.")
-            marker.bandwidth_hz = self._read_float(
-                self._marker_bw_edit,
-                "Marker BW",
-                minimum=0.0,
-                maximum=1.0e12,
-            )
-            if marker.bandwidth_hz <= 0.0:
-                raise ValueError("Marker BW must be greater than 0.")
-        except ValueError as exc:
-            self._report_input_error(str(exc))
-            return
-        self._markers = [marker]
-        self._session.set_markers(self._markers)
-        self._set_status(
-            f"Marker set at {_format_hz(marker.center_frequency_hz)} with {_format_hz(marker.bandwidth_hz)} span"
-        )
-
     def _toggle_stream(self) -> None:
         if self._session.is_running():
             self._session.stop()
@@ -870,6 +1092,9 @@ class MainWindow(QtWidgets.QMainWindow):
         spectrum = snapshot.spectrum
         detections = snapshot.analysis.detections
         markers = snapshot.analysis.marker_measurements
+        marker_names = [
+            entry.name for entry in getattr(self, "_marker_entries", ())
+        ]
 
         x_values = list(
             (index - (len(spectrum.power_dbfs) / 2.0)) * spectrum.bin_resolution_hz
@@ -894,10 +1119,14 @@ class MainWindow(QtWidgets.QMainWindow):
             + [
                 (
                     marker.center_frequency_hz,
-                    f"marker {_format_dbfs(marker.peak_power_dbfs)} avg {_format_dbfs(marker.average_power_dbfs)}",
+                    (
+                        f"{marker_names[index] if index < len(marker_names) else f'Marker {index + 1}'} "
+                        f"{_format_dbfs(marker.peak_power_dbfs)} "
+                        f"avg {_format_dbfs(marker.average_power_dbfs)}"
+                    ),
                     "#f1b24a",
                 )
-                for marker in markers
+                for index, marker in enumerate(markers)
             ],
         )
 

@@ -8,6 +8,8 @@ The canonical notation, code-symbol mapping, and terminology are documented sepa
 
 *This screenshot is generated from the simulator-backed GUI and is meant for reproducibility and layout reference, not live RF validation.*
 
+For marker editing, see the dedicated table-based dialog screenshot in [Case Studies and Screenshots](case-studies.md).
+
 ## Start Here
 
 - [Notation Registry](notation.md) for the canonical symbol table

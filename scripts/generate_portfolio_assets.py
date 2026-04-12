@@ -72,29 +72,35 @@ def _import_gui():
     sys.path.insert(0, str(repo_root / "python"))
 
     from PySide6 import QtCore, QtWidgets
-    from sdr_signal_analyzer.gui import MainWindow
+    from sdr_signal_analyzer.gui import MainWindow, MarkerEntry
 
-    return QtCore, QtWidgets, MainWindow
+    return QtCore, QtWidgets, MainWindow, MarkerEntry
 
 
-def _apply_preset(window, preset: ScreenshotPreset) -> None:
+def _apply_preset(window, preset: ScreenshotPreset, MarkerEntry) -> None:
     window.resize(*preset.window_size)
     window._source_kind.setCurrentIndex(0)
     window._center_edit.setText(str(preset.center_hz))
     window._rate_edit.setText(str(preset.sample_rate_hz))
     window._gain_edit.setText(str(preset.gain_db))
     window._fft_edit.setText(str(preset.fft_size))
-    window._marker_center_edit.setText(str(preset.marker_hz))
-    window._marker_bw_edit.setText(str(preset.marker_bw_hz))
-    window._update_marker()
+    window.set_marker_entries(
+        [
+            MarkerEntry(
+                "Marker 1",
+                preset.marker_hz,
+                preset.marker_bw_hz,
+            )
+        ]
+    )
 
 
 def _render_preset(preset: ScreenshotPreset, output_path: Path) -> None:
-    QtCore, QtWidgets, MainWindow = _import_gui()
+    QtCore, QtWidgets, MainWindow, MarkerEntry = _import_gui()
 
     app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
     window = MainWindow()
-    _apply_preset(window, preset)
+    _apply_preset(window, preset, MarkerEntry)
     window.show()
     app.processEvents()
     window._toggle_stream()
