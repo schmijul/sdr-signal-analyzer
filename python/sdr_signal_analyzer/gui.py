@@ -628,6 +628,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self._configure_validators()
         self._waterfall.set_fft_size(processing.fft_size)
         self._refresh_source_controls()
+        self._marker_editor_dialog: MarkerEditorDialog | None = None
 
     def _create_default_session_state(self) -> tuple[SourceConfig, ProcessingConfig]:
         source = SourceConfig()
@@ -943,9 +944,28 @@ class MainWindow(QtWidgets.QMainWindow):
         self._refresh_marker_summary()
 
     def _open_marker_editor(self) -> None:
-        dialog = MarkerEditorDialog(self._marker_entries, self)
-        if dialog.exec() != QtWidgets.QDialog.DialogCode.Accepted:
+        if self._marker_editor_dialog is not None:
+            self._marker_editor_dialog.raise_()
+            self._marker_editor_dialog.activateWindow()
             return
+
+        dialog = MarkerEditorDialog(self._marker_entries, self)
+        dialog.setWindowModality(QtCore.Qt.WindowModality.ApplicationModal)
+        dialog.setAttribute(QtCore.Qt.WidgetAttribute.WA_DeleteOnClose, False)
+        dialog.accepted.connect(lambda: self._apply_marker_editor(dialog))
+        dialog.finished.connect(self._clear_marker_editor)
+        self._marker_editor_dialog = dialog
+        dialog.show()
+        dialog.raise_()
+        dialog.activateWindow()
+
+    def _update_marker(self) -> None:
+        self._open_marker_editor()
+
+    def _clear_marker_editor(self) -> None:
+        self._marker_editor_dialog = None
+
+    def _apply_marker_editor(self, dialog: MarkerEditorDialog) -> None:
         self.set_marker_entries(dialog.markers())
         if self._markers:
             summary = ", ".join(entry.name for entry in self._marker_entries[:3])
@@ -955,9 +975,6 @@ class MainWindow(QtWidgets.QMainWindow):
             )
         else:
             self._set_status("Markers cleared")
-
-    def _update_marker(self) -> None:
-        self._open_marker_editor()
 
     def _report_input_error(self, message: str) -> None:
         self._set_status(f"Input error: {message}", error=True)

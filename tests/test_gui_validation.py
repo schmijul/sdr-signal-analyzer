@@ -59,6 +59,8 @@ class GuiValidationTests(unittest.TestCase):
     def tearDown(self) -> None:
         if not GUI_AVAILABLE:
             return
+        if getattr(self.window, "_marker_editor_dialog", None) is not None:
+            self.window._marker_editor_dialog.close()
         self.window._session.stop()
         self.window.close()
         self._app.processEvents()
@@ -119,6 +121,12 @@ class GuiValidationTests(unittest.TestCase):
             self.window._marker_summary_label.text(),
             "2 markers configured",
         )
+
+    def test_update_marker_opens_dialog(self) -> None:
+        self.window._open_marker_editor()
+        self._app.processEvents()
+        self.assertIsNotNone(self.window._marker_editor_dialog)
+        self.assertTrue(self.window._marker_editor_dialog.isVisible())
 
     def test_default_state_uses_simulator_profile(self) -> None:
         self.assertEqual(self.window._source_kind.currentData(), SourceKind.SIMULATOR)
