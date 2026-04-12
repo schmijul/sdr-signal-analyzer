@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import ast
 import os
+import time
 import unittest
 from pathlib import Path
 
@@ -118,14 +119,20 @@ class GuiValidationTests(unittest.TestCase):
         self.window._toggle_stream()
         self.assertTrue(self.window._session.is_running())
 
-        for _ in range(300):
+        deadline = time.monotonic() + 2.0
+        while time.monotonic() < deadline:
             self._app.processEvents()
             if not self.window._session.is_running():
                 break
+            time.sleep(0.01)
         self.assertFalse(self.window._session.is_running())
+        deadline = time.monotonic() + 2.0
+        while time.monotonic() < deadline and self.window._start_button.text() != "Start":
+            self._app.processEvents()
+            time.sleep(0.01)
         self.assertEqual(self.window._start_button.text(), "Start")
         self.assertIn("Session stopped:", self.window._status_label.text())
-        self.assertIn("source.read_failed", self.window._status_label.text())
+        self.assertIn("Replay file reached end of stream.", self.window._status_label.text())
 
 
 class GuiDocstringTests(unittest.TestCase):

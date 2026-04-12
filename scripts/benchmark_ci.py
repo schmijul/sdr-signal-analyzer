@@ -15,6 +15,7 @@ from pathlib import Path
 
 
 FRAME_RE = re.compile(r"^frame=(\d+)\b", re.MULTILINE)
+TIME_RE = re.compile(r"^(MAX_RSS_KB|USER_SECONDS|SYS_SECONDS)=(.+)$")
 
 
 def _time_command(command: list[str], *, cwd: Path, env: dict[str, str]) -> dict[str, float | int | str]:
@@ -42,9 +43,10 @@ def _time_command(command: list[str], *, cwd: Path, env: dict[str, str]) -> dict
         "wall_seconds": elapsed,
     }
     for line in completed.stderr.splitlines():
-        if "=" not in line:
+        match = TIME_RE.match(line.strip())
+        if not match:
             continue
-        key, value = line.split("=", 1)
+        key, value = match.groups()
         if key == "MAX_RSS_KB":
             parsed[key.lower()] = int(value)
         else:

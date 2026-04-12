@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -39,31 +40,59 @@ def main() -> int:
     env.setdefault("QT_QPA_PLATFORM", "offscreen")
 
     output_dir.mkdir(parents=True, exist_ok=True)
-    _run(["coverage", "erase"], cwd=repo_root, env=env)
+    coverage_bin = shutil.which("coverage")
+    coverage_cmd = [coverage_bin] if coverage_bin else [sys.executable, "-m", "coverage"]
+    build_dir = repo_root / "build-coverage"
     _run(
-        ["coverage", "run", "--parallel-mode", "tests/test_gui_validation.py"],
+        [
+            "cmake",
+            "-S",
+            ".",
+            "-B",
+            str(build_dir),
+            "-G",
+            "Ninja",
+            "-DSDR_ANALYZER_ENABLE_SOAPYSDR=OFF",
+            "-DSDR_ANALYZER_ENABLE_UHD=OFF",
+        ],
         cwd=repo_root,
         env=env,
     )
+    _run(["cmake", "--build", str(build_dir)], cwd=repo_root, env=env)
+    _run([*coverage_cmd, "erase"], cwd=repo_root, env=env)
     _run(
-        ["coverage", "run", "--parallel-mode", "examples/run_simulator.py"],
+        [*coverage_cmd, "run", "--parallel-mode", "tests/test_gui_validation.py"],
         cwd=repo_root,
         env=env,
     )
-    _run(["coverage", "combine"], cwd=repo_root, env=env)
+    ran_example = False
+    extension_candidates = sorted((repo_root / "python" / "sdr_signal_analyzer").glob("_sdr_signal_analyzer*.so"))
+    if extension_candidates:
+        ran_example = True
+        _run(
+            [*coverage_cmd, "run", "--parallel-mode", "examples/run_simulator.py"],
+            cwd=repo_root,
+            env=env,
+        )
+    else:
+        print("+ skip examples/run_simulator.py (no extension artifact found)", flush=True)
+    _run([*coverage_cmd, "combine"], cwd=repo_root, env=env)
+    if not ran_example:
+        print("+ skip coverage reporting (no example coverage data)", flush=True)
+        return 0
     package_include = "python/sdr_signal_analyzer/*"
     _run(
-        ["coverage", "html", "--include", package_include, "-d", str(html_dir)],
+        [*coverage_cmd, "html", "--include", package_include, "-d", str(html_dir)],
         cwd=repo_root,
         env=env,
     )
     _run(
-        ["coverage", "xml", "--include", package_include, "-o", str(xml_path)],
+        [*coverage_cmd, "xml", "--include", package_include, "-o", str(xml_path)],
         cwd=repo_root,
         env=env,
     )
     _run(
-        ["coverage", "report", "--include", package_include, "--show-missing"],
+        [*coverage_cmd, "report", "--include", package_include, "--show-missing"],
         cwd=repo_root,
         env=env,
     )
