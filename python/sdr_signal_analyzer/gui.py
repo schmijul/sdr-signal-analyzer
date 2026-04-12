@@ -851,15 +851,19 @@ class MainWindow(QtWidgets.QMainWindow):
         if snapshot is None:
             if not self._session.is_running():
                 diagnostics = self._session.drain_diagnostics()
-                if diagnostics:
-                    latest = diagnostics[-1]
-                    self._timer.stop()
-                    self._start_button.setText("Start")
+                latest = diagnostics[-1] if diagnostics else None
+                self._timer.stop()
+                self._start_button.setText("Start")
+                if latest is not None:
                     self._set_status(
                         f"Session stopped: {latest.message} "
                         f"[{latest.component}:{latest.code}]",
                         error=latest.level == "error",
                     )
+                else:
+                    last_error = self._session.last_error().strip()
+                    message = f"Session stopped: {last_error}" if last_error else "Stopped"
+                    self._set_status(message, error=bool(last_error))
             return
 
         self._session.drain_diagnostics()
