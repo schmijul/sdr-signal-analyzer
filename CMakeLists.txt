@@ -194,7 +194,9 @@ if(Python3_FOUND)
       ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_cli_export.py
   )
   set_tests_properties(cli_export PROPERTIES TIMEOUT 20)
+endif()
 
+if(Python3_FOUND AND TARGET _sdr_signal_analyzer)
   add_test(
     NAME demo
     COMMAND
