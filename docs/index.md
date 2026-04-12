@@ -11,6 +11,7 @@ The canonical notation, code-symbol mapping, and terminology are documented sepa
 ## Start Here
 
 - [Notation Registry](notation.md) for the canonical symbol table
+- [Verified Behavior](proof.md) for the shortest evidence path
 - [Code-Symbol Mapping](code-symbol-mapping.md) for the code-to-symbol crosswalk
 - [Terminology and Status Labels](terminology.md) for preferred wording and status labels
 - [Architecture](architecture.md) for system layout and data flow
@@ -36,6 +37,7 @@ The canonical notation, code-symbol mapping, and terminology are documented sepa
 - Run the demo with `sdr-signal-analyzer-demo`
 - Run the simulator CLI with `sdr-analyzer-cli --source simulator --frames 20`
 - Replay the committed fixture with `sdr-analyzer-cli --source replay --input tests/fixtures/tone_cf32.sigmf-data --meta tests/fixtures/tone_cf32.sigmf-meta --frames 4`
+- Check the proof page when you need a repo-backed screenshot and exact replay result: [Verified Behavior](proof.md)
 
 ## Status Labels
 

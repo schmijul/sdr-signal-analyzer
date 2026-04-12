@@ -21,6 +21,7 @@ markdown_extensions:
 
 nav:
   - Overview: index.md
+  - Verified Behavior: proof.md
   - Notation Registry: notation.md
   - Code-Symbol Mapping: code-symbol-mapping.md
   - Terminology and Status Labels: terminology.md
