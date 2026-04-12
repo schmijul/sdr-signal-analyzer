@@ -41,7 +41,7 @@ DEFAULT_TIME_Y_MAX = 1.5
 DEFAULT_PLOT_MARGIN_LEFT = 80
 DEFAULT_PLOT_MARGIN_TOP = 32
 DEFAULT_PLOT_MARGIN_RIGHT = 18
-DEFAULT_PLOT_MARGIN_BOTTOM_WITH_LABELS = 30
+DEFAULT_PLOT_MARGIN_BOTTOM_WITH_LABELS = 36
 DEFAULT_PLOT_MARGIN_BOTTOM_WITHOUT_LABELS = 16
 DEFAULT_PLOT_Y_LABEL_WIDTH = 68
 DEFAULT_PLOT_NOISE_LABEL_WIDTH = 110
@@ -97,11 +97,14 @@ class MarkerEditorDialog(QtWidgets.QDialog):
         self,
         markers: Sequence[MarkerEntry],
         parent: QtWidgets.QWidget | None = None,
+        *,
+        detections: Sequence[MarkerEntry] = (),
     ) -> None:
         super().__init__(parent)
         self.setWindowTitle("Edit Markers")
         self.resize(760, 360)
         self._markers = list(markers)
+        self._detections = list(detections)
 
         self._table = QtWidgets.QTableWidget(0, 3, self)
         self._table.setHorizontalHeaderLabels(["Name", "Center Hz", "Bandwidth Hz"])
@@ -129,6 +132,11 @@ class MarkerEditorDialog(QtWidgets.QDialog):
         self._add_button.clicked.connect(self._add_row)
         self._remove_button = QtWidgets.QPushButton("Remove Selected")
         self._remove_button.clicked.connect(self._remove_selected_rows)
+        self._import_button = QtWidgets.QPushButton(
+            f"Import Detections ({len(self._detections)})"
+        )
+        self._import_button.setEnabled(bool(self._detections))
+        self._import_button.clicked.connect(self._import_detections)
 
         self._button_box = QtWidgets.QDialogButtonBox(
             QtWidgets.QDialogButtonBox.StandardButton.Ok
@@ -149,6 +157,7 @@ class MarkerEditorDialog(QtWidgets.QDialog):
         toolbar = QtWidgets.QHBoxLayout()
         toolbar.addWidget(self._add_button)
         toolbar.addWidget(self._remove_button)
+        toolbar.addWidget(self._import_button)
         toolbar.addStretch(1)
         layout.addLayout(toolbar)
         layout.addWidget(self._message_label)
@@ -156,7 +165,12 @@ class MarkerEditorDialog(QtWidgets.QDialog):
 
         for marker in self._markers:
             self._add_row(marker)
-        if not self._markers:
+        existing_centers = {round(m.center_frequency_hz, 3) for m in self._markers}
+        for detection in self._detections:
+            if round(detection.center_frequency_hz, 3) in existing_centers:
+                continue
+            self._add_row(detection)
+        if self._table.rowCount() == 0:
             self._add_row(
                 MarkerEntry("Marker 1", DEFAULT_MARKER_CENTER_HZ, DEFAULT_MARKER_BANDWIDTH_HZ)
             )
@@ -208,6 +222,11 @@ class MarkerEditorDialog(QtWidgets.QDialog):
                 | QtCore.Qt.AlignmentFlag.AlignVCenter,
             ),
         )
+
+    def _import_detections(self) -> None:
+        for detection in self._detections:
+            self._add_row(detection)
+        self._set_message()
 
     def _remove_selected_rows(self) -> None:
         rows = sorted(
@@ -288,6 +307,12 @@ class PlotCanvas(QtWidgets.QWidget):
         self._series: list[tuple[str, QtGui.QColor, list[float]]] = []
         self._noise_floor: float | None = None
         self._annotations: list[tuple[float, str, QtGui.QColor]] = []
+        self._marker_annotations: list[tuple[float, str, QtGui.QColor]] = []
+        self._show_detection_annotations = True
+
+    def set_detection_annotations_visible(self, visible: bool) -> None:
+        self._show_detection_annotations = visible
+        self.update()
 
     def set_data(
         self,
@@ -296,6 +321,7 @@ class PlotCanvas(QtWidgets.QWidget):
         *,
         noise_floor: float | None = None,
         annotations: Sequence[tuple[float, str, str | QtGui.QColor]] = (),
+        marker_annotations: Sequence[tuple[float, str, str | QtGui.QColor]] = (),
     ) -> None:
         self._x_values = list(x_values)
         self._series = [
@@ -307,14 +333,19 @@ class PlotCanvas(QtWidgets.QWidget):
             for name, color, values in series
         ]
         self._noise_floor = noise_floor
-        self._annotations = [
-            (
-                position,
-                label,
-                color if isinstance(color, QtGui.QColor) else QtGui.QColor(color),
-            )
-            for position, label, color in annotations
-        ]
+
+        def _normalize(items):
+            return [
+                (
+                    position,
+                    label,
+                    color if isinstance(color, QtGui.QColor) else QtGui.QColor(color),
+                )
+                for position, label, color in items
+            ]
+
+        self._annotations = _normalize(annotations)
+        self._marker_annotations = _normalize(marker_annotations)
         self.update()
 
     def _plot_rect(self) -> QtCore.QRect:
@@ -408,9 +439,13 @@ class PlotCanvas(QtWidgets.QWidget):
                 f"noise {_format_dbfs(self._noise_floor)}",
             )
 
-        for index, (position, label, color) in enumerate(
-            self._annotations[:DEFAULT_MAX_ANNOTATIONS]
-        ):
+        detection_slice = (
+            list(self._annotations[:DEFAULT_MAX_ANNOTATIONS])
+            if self._show_detection_annotations
+            else []
+        )
+        combined_annotations = detection_slice + list(self._marker_annotations)
+        for index, (position, label, color) in enumerate(combined_annotations):
             if position < x_min or position > x_max:
                 continue
             x = int(x_to_pixel(position))
@@ -452,17 +487,31 @@ class PlotCanvas(QtWidgets.QWidget):
 
         if self._show_x_labels:
             painter.setPen(QtGui.QColor("#8f99a8"))
-            painter.drawText(
-                plot_rect.left(),
-                plot_rect.bottom() + 18,
-                plot_rect.width(),
-                16,
-                QtCore.Qt.AlignmentFlag.AlignHCenter,
-                self._x_label_text(),
-            )
-
-    def _x_label_text(self) -> str:
-        return "Frequency" if self._title == "Spectrum" else "Sample Index"
+            ticks = 6
+            is_spectrum = self._title == "Spectrum"
+            for tick_index in range(ticks + 1):
+                ratio = tick_index / ticks
+                value = x_min + (x_max - x_min) * ratio
+                x = plot_rect.left() + int(plot_rect.width() * ratio)
+                painter.drawLine(x, plot_rect.bottom(), x, plot_rect.bottom() + 4)
+                text = _format_hz(value) if is_spectrum else f"{int(value)}"
+                if tick_index == 0:
+                    align = QtCore.Qt.AlignmentFlag.AlignLeft
+                    rect_x = x
+                elif tick_index == ticks:
+                    align = QtCore.Qt.AlignmentFlag.AlignRight
+                    rect_x = x - 80
+                else:
+                    align = QtCore.Qt.AlignmentFlag.AlignHCenter
+                    rect_x = x - 40
+                painter.drawText(
+                    rect_x,
+                    plot_rect.bottom() + 6,
+                    80,
+                    14,
+                    align | QtCore.Qt.AlignmentFlag.AlignTop,
+                    text,
+                )
 
 
 class WaterfallCanvas(QtWidgets.QWidget):
@@ -629,6 +678,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self._waterfall.set_fft_size(processing.fft_size)
         self._refresh_source_controls()
         self._marker_editor_dialog: MarkerEditorDialog | None = None
+        self._latest_detection_entries: list[MarkerEntry] = []
 
     def _create_default_session_state(self) -> tuple[SourceConfig, ProcessingConfig]:
         source = SourceConfig()
@@ -674,6 +724,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self._start_button.clicked.connect(self._toggle_stream)
         self._marker_button = QtWidgets.QPushButton("Update Marker")
         self._marker_button.clicked.connect(self._update_marker)
+        self._detections_toggle = QtWidgets.QPushButton("Detections: On")
+        self._detections_toggle.setCheckable(True)
+        self._detections_toggle.setChecked(True)
+        self._detections_toggle.toggled.connect(self._on_detections_toggled)
         self._marker_summary_label = QtWidgets.QLabel("")
         self._marker_summary_label.setObjectName("markerSummary")
 
@@ -730,6 +784,7 @@ class MainWindow(QtWidgets.QMainWindow):
         controls.addWidget(self._start_button, 4, 2, 1, 2)
         controls.addWidget(self._marker_summary_label, 4, 4)
         controls.addWidget(self._marker_button, 4, 5)
+        controls.addWidget(self._detections_toggle, 4, 6)
         self._controls_layout = controls
         self._refresh_marker_summary()
 
@@ -896,6 +951,34 @@ class MainWindow(QtWidgets.QMainWindow):
         )
         self._status_label.setText(message)
 
+    def _on_detections_toggled(self, checked: bool) -> None:
+        self._detections_toggle.setText(
+            "Detections: On" if checked else "Detections: Off"
+        )
+        self._spectrum_plot.set_detection_annotations_visible(checked)
+
+    def _marker_covers(self, frequency_hz: float) -> bool:
+        for entry in self._marker_entries:
+            half = max(entry.bandwidth_hz, 1.0) / 2.0
+            if abs(entry.center_frequency_hz - frequency_hz) <= half:
+                return True
+        return False
+
+    def _build_marker_annotations(self, measurements):
+        annotations = []
+        for index, entry in enumerate(self._marker_entries):
+            measurement = measurements[index] if index < len(measurements) else None
+            if measurement is not None:
+                label = (
+                    f"{entry.name} {_format_hz(entry.center_frequency_hz)} "
+                    f"{_format_dbfs(measurement.peak_power_dbfs)} "
+                    f"avg {_format_dbfs(measurement.average_power_dbfs)}"
+                )
+            else:
+                label = f"{entry.name} {_format_hz(entry.center_frequency_hz)}"
+            annotations.append((entry.center_frequency_hz, label, "#f1b24a"))
+        return annotations
+
     def _marker_entries_to_markers(
         self, entries: Sequence[MarkerEntry]
     ) -> list[Marker]:
@@ -949,7 +1032,11 @@ class MainWindow(QtWidgets.QMainWindow):
             self._marker_editor_dialog.activateWindow()
             return
 
-        dialog = MarkerEditorDialog(self._marker_entries, self)
+        dialog = MarkerEditorDialog(
+            self._marker_entries,
+            self,
+            detections=self._latest_detection_entries,
+        )
         dialog.setWindowModality(QtCore.Qt.WindowModality.ApplicationModal)
         dialog.setAttribute(QtCore.Qt.WidgetAttribute.WA_DeleteOnClose, False)
         dialog.accepted.connect(lambda: self._apply_marker_editor(dialog))
@@ -1109,15 +1196,21 @@ class MainWindow(QtWidgets.QMainWindow):
         spectrum = snapshot.spectrum
         detections = snapshot.analysis.detections
         markers = snapshot.analysis.marker_measurements
-        marker_names = [
-            entry.name for entry in getattr(self, "_marker_entries", ())
-        ]
 
         x_values = list(
             (index - (len(spectrum.power_dbfs) / 2.0)) * spectrum.bin_resolution_hz
             + spectrum.center_frequency_hz
             for index in range(len(spectrum.power_dbfs))
         )
+        self._latest_detection_entries = [
+            MarkerEntry(
+                f"{detection.labels[0] if detection.labels else 'detection'} "
+                f"{_format_hz(detection.center_frequency_hz)}",
+                detection.center_frequency_hz,
+                detection.bandwidth_hz if detection.bandwidth_hz > 0 else DEFAULT_MARKER_BANDWIDTH_HZ,
+            )
+            for detection in detections
+        ]
         self._spectrum_plot.set_data(
             x_values,
             [
@@ -1128,23 +1221,14 @@ class MainWindow(QtWidgets.QMainWindow):
             annotations=[
                 (
                     detection.center_frequency_hz,
-                    f"{detection.labels[0]} {_format_hz(detection.bandwidth_hz)}",
+                    f"det: {detection.labels[0]} {_format_hz(detection.bandwidth_hz)}",
                     "#d08c60",
                 )
                 for detection in detections[:DEFAULT_MAX_DETECTION_ANNOTATIONS]
-            ]
-            + [
-                (
-                    marker.center_frequency_hz,
-                    (
-                        f"{marker_names[index] if index < len(marker_names) else f'Marker {index + 1}'} "
-                        f"{_format_dbfs(marker.peak_power_dbfs)} "
-                        f"avg {_format_dbfs(marker.average_power_dbfs)}"
-                    ),
-                    "#f1b24a",
-                )
-                for index, marker in enumerate(markers)
+                if self._detections_toggle.isChecked()
+                and not self._marker_covers(detection.center_frequency_hz)
             ],
+            marker_annotations=self._build_marker_annotations(markers),
         )
 
         self._waterfall.append_row(spectrum.power_dbfs)
