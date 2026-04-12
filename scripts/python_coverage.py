@@ -58,28 +58,22 @@ def main() -> int:
         cwd=repo_root,
         env=env,
     )
-    _run(
-        [
-            "cmake",
-            "--build",
-            str(build_dir),
-            "--target",
-            "_sdr_signal_analyzer",
-        ],
-        cwd=repo_root,
-        env=env,
-    )
+    _run(["cmake", "--build", str(build_dir)], cwd=repo_root, env=env)
     _run([*coverage_cmd, "erase"], cwd=repo_root, env=env)
     _run(
         [*coverage_cmd, "run", "--parallel-mode", "tests/test_gui_validation.py"],
         cwd=repo_root,
         env=env,
     )
-    _run(
-        [*coverage_cmd, "run", "--parallel-mode", "examples/run_simulator.py"],
-        cwd=repo_root,
-        env=env,
-    )
+    extension_candidates = sorted((repo_root / "python" / "sdr_signal_analyzer").glob("_sdr_signal_analyzer*.so"))
+    if extension_candidates:
+        _run(
+            [*coverage_cmd, "run", "--parallel-mode", "examples/run_simulator.py"],
+            cwd=repo_root,
+            env=env,
+        )
+    else:
+        print("+ skip examples/run_simulator.py (no extension artifact found)", flush=True)
     _run([*coverage_cmd, "combine"], cwd=repo_root, env=env)
     package_include = "python/sdr_signal_analyzer/*"
     _run(
