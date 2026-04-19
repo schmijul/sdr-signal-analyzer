@@ -9,6 +9,25 @@ Important distinction:
 - the committed replay fixtures are synthetic narrowband test captures
 - these assets prove reproducibility and pipeline behavior, not calibrated RF truth
 
+## UHD Live UI
+
+![UHD-backed overview screenshot of the GUI using a USRP. Live RF, not calibrated validation.](screenshots/uhd_overview.png)
+
+*A hardware-backed GUI screenshot captured through the native UHD source path with an attached USRP.*
+
+What it proves:
+- the current GUI can run through the UHD code path rather than only the simulator path
+- the documentation now includes a screenshot from the actual live-device layout
+- the USRP-specific controls are visible in a realistic session configuration
+
+Status:
+- provenance: `uhd live session`
+- evidence class: `Illustrative` for attached-hardware UI coverage
+
+What it does not prove:
+- this single screenshot is not a full hardware validation report
+- it does not by itself prove long-run stability, calibration, or measurement accuracy
+
 ## Overview UI
 
 ![Simulator-generated overview screenshot of the GUI. Not live RF validation.](screenshots/overview.png)
@@ -141,10 +160,14 @@ QT_QPA_PLATFORM=offscreen PYTHONPATH=python python scripts/generate_portfolio_as
 QT_QPA_PLATFORM=offscreen PYTHONPATH=python python scripts/generate_portfolio_assets.py \
   --preset narrowband-focus \
   --output docs/screenshots/narrowband_focus.png
+QT_QPA_PLATFORM=offscreen PYTHONPATH=python python scripts/generate_portfolio_assets.py \
+  --preset uhd-overview \
+  --output docs/screenshots/uhd_overview.png
 ```
 
 Use `--all --output-dir docs/screenshots` if you want to refresh the full committed set in one pass.
 The marker editor screenshot is captured directly from the dialog widget and should be regenerated with a small offscreen helper when the table layout changes.
+The UHD screenshot depends on attached hardware and is intentionally not part of `--all`.
 
 ## What Still Improves The Portfolio
 

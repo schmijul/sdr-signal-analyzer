@@ -17,6 +17,10 @@ class ScreenshotPreset:
     gain_db: float
     marker_hz: float
     marker_bw_hz: float
+    source_kind_index: int = 0
+    device_args: str = ""
+    channel: str = "0"
+    antenna: str = ""
     fft_size: int = 2048
     settle_cycles: int = 32
     window_size: tuple[int, int] = (1600, 1050)
@@ -61,6 +65,20 @@ PRESETS: dict[str, ScreenshotPreset] = {
         fft_size=4096,
         settle_cycles=40,
     ),
+    "uhd-overview": ScreenshotPreset(
+        name="uhd-overview",
+        output_name="uhd_overview.png",
+        center_hz=100_000_000.0,
+        sample_rate_hz=2_000_000.0,
+        gain_db=20.0,
+        marker_hz=100_000_000.0,
+        marker_bw_hz=200_000.0,
+        source_kind_index=3,
+        device_args="type=b200",
+        channel="0",
+        antenna="TX/RX",
+        settle_cycles=20,
+    ),
 }
 
 def _repo_root() -> Path:
@@ -79,11 +97,15 @@ def _import_gui():
 
 def _apply_preset(window, preset: ScreenshotPreset, MarkerEntry) -> None:
     window.resize(*preset.window_size)
-    window._source_kind.setCurrentIndex(0)
+    window._source_kind.setCurrentIndex(preset.source_kind_index)
     window._center_edit.setText(str(preset.center_hz))
     window._rate_edit.setText(str(preset.sample_rate_hz))
     window._gain_edit.setText(str(preset.gain_db))
     window._fft_edit.setText(str(preset.fft_size))
+    window._device_args_edit.setText(preset.device_args)
+    window._channel_edit.setText(preset.channel)
+    if preset.antenna:
+        window._antenna_edit.setText(preset.antenna)
     window.set_marker_entries(
         [
             MarkerEntry(

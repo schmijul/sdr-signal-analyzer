@@ -4,9 +4,9 @@
 
 The canonical notation, code-symbol mapping, and terminology are documented separately so equations, code, and tests stay aligned.
 
-![Simulator-generated overview screenshot of the GUI. Not live RF validation.](screenshots/overview.png)
+![UHD-backed overview screenshot of the GUI using a USRP. Live RF, not calibrated validation.](screenshots/uhd_overview.png)
 
-*This screenshot is generated from the simulator-backed GUI and is meant for reproducibility and layout reference, not live RF validation.*
+*This overview screenshot is captured from the current UHD GUI path with a live USRP session. It shows the real hardware-backed layout, but it is not a calibrated RF validation artifact by itself.*
 
 For marker editing, see the dedicated table-based dialog screenshot in [Case Studies and Screenshots](case-studies.md).
 
