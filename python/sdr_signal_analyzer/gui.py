@@ -968,20 +968,41 @@ class MainWindow(QtWidgets.QMainWindow):
         )
         self._spectrum_plot.set_detection_annotations_visible(checked)
 
+    def _try_reset_peak_hold(self) -> bool:
+        reset_peak_hold = getattr(self._session, "reset_peak_hold", None)
+        if reset_peak_hold is None:
+            return False
+        reset_peak_hold()
+        return True
+
     def _reset_peak_hold(self) -> None:
-        self._session.reset_peak_hold()
-        self._set_status("Peak hold reset")
+        if self._try_reset_peak_hold():
+            self._set_status("Peak hold reset")
+            return
+        self._set_status("Peak hold reset unavailable: rebuild Python bindings", error=True)
 
     def _reset_peak_hold_automatically(self) -> None:
-        self._session.reset_peak_hold()
+        if not self._try_reset_peak_hold():
+            self._peak_hold_auto_reset_timer.stop()
+            self._peak_hold_auto_reset_button.setChecked(False)
+            self._set_status(
+                "Peak hold auto reset unavailable: rebuild Python bindings",
+                error=True,
+            )
 
     def _on_peak_hold_auto_reset_toggled(self, checked: bool) -> None:
         self._peak_hold_auto_reset_button.setText(
             "Peak Auto Reset: On" if checked else "Peak Auto Reset: Off"
         )
         if checked:
+            if not self._try_reset_peak_hold():
+                self._peak_hold_auto_reset_button.setChecked(False)
+                self._set_status(
+                    "Peak hold auto reset unavailable: rebuild Python bindings",
+                    error=True,
+                )
+                return
             self._peak_hold_auto_reset_timer.start()
-            self._session.reset_peak_hold()
             self._set_status("Peak hold auto reset every 3s")
             return
         self._peak_hold_auto_reset_timer.stop()

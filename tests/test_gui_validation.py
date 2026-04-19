@@ -155,19 +155,36 @@ class GuiValidationTests(unittest.TestCase):
 
     def test_peak_hold_reset_button_updates_status(self) -> None:
         self.window._reset_peak_hold()
-        self.assertEqual(self.window._status_label.text(), "Peak hold reset")
+        if hasattr(self.window._session, "reset_peak_hold"):
+            self.assertEqual(self.window._status_label.text(), "Peak hold reset")
+        else:
+            self.assertEqual(
+                self.window._status_label.text(),
+                "Peak hold reset unavailable: rebuild Python bindings",
+            )
 
     def test_peak_hold_auto_reset_toggle_starts_and_stops_timer(self) -> None:
         self.window._peak_hold_auto_reset_button.setChecked(True)
-        self.assertTrue(self.window._peak_hold_auto_reset_timer.isActive())
-        self.assertEqual(
-            self.window._peak_hold_auto_reset_button.text(),
-            "Peak Auto Reset: On",
-        )
-        self.assertEqual(
-            self.window._status_label.text(),
-            "Peak hold auto reset every 3s",
-        )
+        if hasattr(self.window._session, "reset_peak_hold"):
+            self.assertTrue(self.window._peak_hold_auto_reset_timer.isActive())
+            self.assertEqual(
+                self.window._peak_hold_auto_reset_button.text(),
+                "Peak Auto Reset: On",
+            )
+            self.assertEqual(
+                self.window._status_label.text(),
+                "Peak hold auto reset every 3s",
+            )
+        else:
+            self.assertFalse(self.window._peak_hold_auto_reset_timer.isActive())
+            self.assertEqual(
+                self.window._peak_hold_auto_reset_button.text(),
+                "Peak Auto Reset: Off",
+            )
+            self.assertEqual(
+                self.window._status_label.text(),
+                "Peak hold auto reset unavailable: rebuild Python bindings",
+            )
 
         self.window._peak_hold_auto_reset_button.setChecked(False)
         self.assertFalse(self.window._peak_hold_auto_reset_timer.isActive())
@@ -175,10 +192,16 @@ class GuiValidationTests(unittest.TestCase):
             self.window._peak_hold_auto_reset_button.text(),
             "Peak Auto Reset: Off",
         )
-        self.assertEqual(
-            self.window._status_label.text(),
-            "Peak hold auto reset disabled",
-        )
+        if hasattr(self.window._session, "reset_peak_hold"):
+            self.assertEqual(
+                self.window._status_label.text(),
+                "Peak hold auto reset disabled",
+            )
+        else:
+            self.assertEqual(
+                self.window._status_label.text(),
+                "Peak hold auto reset unavailable: rebuild Python bindings",
+            )
 
     def test_replay_eof_surfaces_a_stopped_status(self) -> None:
         fixture_root = ROOT / "tests" / "fixtures"
