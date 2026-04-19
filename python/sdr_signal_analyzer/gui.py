@@ -23,6 +23,7 @@ DEFAULT_PANEL_HEIGHT = 220
 DEFAULT_WATERFALL_HEIGHT = 240
 DEFAULT_WATERFALL_ROWS = 220
 DEFAULT_TIMER_INTERVAL_MS = 40
+DEFAULT_PEAK_HOLD_AUTO_RESET_INTERVAL_MS = 3000
 DEFAULT_DISPLAY_SAMPLES = 2048
 DEFAULT_FFT_SIZE = 2048
 DEFAULT_SOURCE_CENTER_HZ = 100_000_000.0
@@ -33,6 +34,7 @@ DEFAULT_MARKER_BANDWIDTH_HZ = 200_000.0
 DEFAULT_REPLAY_HOST = "127.0.0.1"
 DEFAULT_REPLAY_PORT = "1234"
 DEFAULT_CHANNEL = "0"
+DEFAULT_UHD_ANTENNA = "TX/RX"
 DEFAULT_EMPTY_TEXT = ""
 DEFAULT_PLOT_Y_MIN = -140.0
 DEFAULT_PLOT_Y_MAX = 0.0
@@ -724,6 +726,15 @@ class MainWindow(QtWidgets.QMainWindow):
         self._start_button.clicked.connect(self._toggle_stream)
         self._marker_button = QtWidgets.QPushButton("Update Marker")
         self._marker_button.clicked.connect(self._update_marker)
+        self._peak_hold_reset_button = QtWidgets.QPushButton("Reset Peak Hold")
+        self._peak_hold_reset_button.clicked.connect(self._reset_peak_hold)
+        self._peak_hold_auto_reset_button = QtWidgets.QPushButton(
+            "Peak Auto Reset: Off"
+        )
+        self._peak_hold_auto_reset_button.setCheckable(True)
+        self._peak_hold_auto_reset_button.toggled.connect(
+            self._on_peak_hold_auto_reset_toggled
+        )
         self._detections_toggle = QtWidgets.QPushButton("Detections: On")
         self._detections_toggle.setCheckable(True)
         self._detections_toggle.setChecked(True)
@@ -785,6 +796,8 @@ class MainWindow(QtWidgets.QMainWindow):
         controls.addWidget(self._marker_summary_label, 4, 4)
         controls.addWidget(self._marker_button, 4, 5)
         controls.addWidget(self._detections_toggle, 4, 6)
+        controls.addWidget(self._peak_hold_reset_button, 5, 4)
+        controls.addWidget(self._peak_hold_auto_reset_button, 5, 5, 1, 2)
         self._controls_layout = controls
         self._refresh_marker_summary()
 
@@ -816,6 +829,13 @@ class MainWindow(QtWidgets.QMainWindow):
         self._timer = QtCore.QTimer(self)
         self._timer.setInterval(DEFAULT_TIMER_INTERVAL_MS)
         self._timer.timeout.connect(self._poll_session)
+        self._peak_hold_auto_reset_timer = QtCore.QTimer(self)
+        self._peak_hold_auto_reset_timer.setInterval(
+            DEFAULT_PEAK_HOLD_AUTO_RESET_INTERVAL_MS
+        )
+        self._peak_hold_auto_reset_timer.timeout.connect(
+            self._reset_peak_hold_automatically
+        )
 
     def _apply_palette(self) -> None:
         self.setStyleSheet(
@@ -860,6 +880,8 @@ class MainWindow(QtWidgets.QMainWindow):
             label.setVisible(visible)
             widget.setVisible(visible)
             widget.setEnabled(visible)
+        if current_kind == SourceKind.UHD and not self._antenna_edit.text().strip():
+            self._antenna_edit.setText(DEFAULT_UHD_ANTENNA)
 
     @staticmethod
     def _is_power_of_two(value: int) -> bool:
@@ -956,6 +978,25 @@ class MainWindow(QtWidgets.QMainWindow):
             "Detections: On" if checked else "Detections: Off"
         )
         self._spectrum_plot.set_detection_annotations_visible(checked)
+
+    def _reset_peak_hold(self) -> None:
+        self._session.reset_peak_hold()
+        self._set_status("Peak hold reset")
+
+    def _reset_peak_hold_automatically(self) -> None:
+        self._session.reset_peak_hold()
+
+    def _on_peak_hold_auto_reset_toggled(self, checked: bool) -> None:
+        self._peak_hold_auto_reset_button.setText(
+            "Peak Auto Reset: On" if checked else "Peak Auto Reset: Off"
+        )
+        if checked:
+            self._peak_hold_auto_reset_timer.start()
+            self._session.reset_peak_hold()
+            self._set_status("Peak hold auto reset every 3s")
+            return
+        self._peak_hold_auto_reset_timer.stop()
+        self._set_status("Peak hold auto reset disabled")
 
     def _marker_covers(self, frequency_hz: float) -> bool:
         for entry in self._marker_entries:

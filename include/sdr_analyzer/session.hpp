@@ -27,6 +27,7 @@ public:
 
   bool update_source_config(const SourceConfig &config);
   void update_processing_config(const ProcessingConfig &config);
+  void reset_peak_hold();
   bool start_recording(const RecordingConfig &config);
   void stop_recording();
 
