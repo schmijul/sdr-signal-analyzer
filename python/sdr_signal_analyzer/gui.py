@@ -167,15 +167,6 @@ class MarkerEditorDialog(QtWidgets.QDialog):
 
         for marker in self._markers:
             self._add_row(marker)
-        existing_centers = {round(m.center_frequency_hz, 3) for m in self._markers}
-        for detection in self._detections:
-            if round(detection.center_frequency_hz, 3) in existing_centers:
-                continue
-            self._add_row(detection)
-        if self._table.rowCount() == 0:
-            self._add_row(
-                MarkerEntry("Marker 1", DEFAULT_MARKER_CENTER_HZ, DEFAULT_MARKER_BANDWIDTH_HZ)
-            )
 
     def _set_message(self, message: str = "") -> None:
         self._message_label.setText(message)
@@ -691,9 +682,7 @@ class MainWindow(QtWidgets.QMainWindow):
         processing.display_samples = DEFAULT_DISPLAY_SAMPLES
 
         self._session = AnalyzerSession(source, processing)
-        self._marker_entries = [
-            MarkerEntry("Marker 1", source.center_frequency_hz, DEFAULT_MARKER_BANDWIDTH_HZ)
-        ]
+        self._marker_entries = []
         self._markers = self._marker_entries_to_markers(self._marker_entries)
         return source, processing
 
