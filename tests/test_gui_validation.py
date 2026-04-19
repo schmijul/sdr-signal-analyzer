@@ -127,6 +127,7 @@ class GuiValidationTests(unittest.TestCase):
         self._app.processEvents()
         self.assertIsNotNone(self.window._marker_editor_dialog)
         self.assertTrue(self.window._marker_editor_dialog.isVisible())
+        self.assertEqual(self.window._marker_editor_dialog._table.rowCount(), 0)
 
     def test_default_state_uses_simulator_profile(self) -> None:
         self.assertEqual(self.window._source_kind.currentData(), SourceKind.SIMULATOR)
@@ -134,11 +135,23 @@ class GuiValidationTests(unittest.TestCase):
         self.assertEqual(self.window._start_button.text(), "Start")
         self.assertEqual(self.window._status_label.text(), "Idle")
         self.assertEqual(self.window._waterfall._rows, 220)
+        self.assertEqual(self.window._marker_entries, [])
+        self.assertEqual(self.window._markers, [])
+        self.assertEqual(self.window._marker_summary_label.text(), "No markers")
+        self.assertEqual(self.window._latest_detection_entries, [])
         self.assertEqual(self.window._peak_hold_reset_button.text(), "Reset Peak Hold")
         self.assertEqual(
             self.window._peak_hold_auto_reset_button.text(),
             "Peak Auto Reset: Off",
         )
+
+    def test_marker_editor_does_not_auto_import_detections(self) -> None:
+        self.window._latest_detection_entries = [
+            MarkerEntry("det 1", 100100000.0, 50000.0)
+        ]
+        self.window._open_marker_editor()
+        self._app.processEvents()
+        self.assertEqual(self.window._marker_editor_dialog._table.rowCount(), 0)
 
     def test_peak_hold_reset_button_updates_status(self) -> None:
         self.window._reset_peak_hold()
