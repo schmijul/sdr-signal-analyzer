@@ -13,6 +13,7 @@ public:
   explicit Analyzer(ProcessingConfig config = {});
 
   void UpdateConfig(const ProcessingConfig &config);
+  void ResetPeakHold();
   AnalyzerSnapshot Process(std::uint64_t sequence, double center_frequency_hz,
                            double sample_rate_hz,
                            const std::vector<std::complex<float>> &iq_samples,

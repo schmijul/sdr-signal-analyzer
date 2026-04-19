@@ -112,6 +112,11 @@ void Analyzer::UpdateConfig(const ProcessingConfig &config) {
   EnsureState();
 }
 
+void Analyzer::ResetPeakHold() {
+  EnsureState();
+  peak_hold_power_.assign(config_.fft_size, kMinDb);
+}
+
 AnalyzerSnapshot
 Analyzer::Process(const std::uint64_t sequence,
                   const double center_frequency_hz, const double sample_rate_hz,

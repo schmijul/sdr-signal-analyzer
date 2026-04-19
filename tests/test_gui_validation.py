@@ -134,6 +134,38 @@ class GuiValidationTests(unittest.TestCase):
         self.assertEqual(self.window._start_button.text(), "Start")
         self.assertEqual(self.window._status_label.text(), "Idle")
         self.assertEqual(self.window._waterfall._rows, 220)
+        self.assertEqual(self.window._peak_hold_reset_button.text(), "Reset Peak Hold")
+        self.assertEqual(
+            self.window._peak_hold_auto_reset_button.text(),
+            "Peak Auto Reset: Off",
+        )
+
+    def test_peak_hold_reset_button_updates_status(self) -> None:
+        self.window._reset_peak_hold()
+        self.assertEqual(self.window._status_label.text(), "Peak hold reset")
+
+    def test_peak_hold_auto_reset_toggle_starts_and_stops_timer(self) -> None:
+        self.window._peak_hold_auto_reset_button.setChecked(True)
+        self.assertTrue(self.window._peak_hold_auto_reset_timer.isActive())
+        self.assertEqual(
+            self.window._peak_hold_auto_reset_button.text(),
+            "Peak Auto Reset: On",
+        )
+        self.assertEqual(
+            self.window._status_label.text(),
+            "Peak hold auto reset every 3s",
+        )
+
+        self.window._peak_hold_auto_reset_button.setChecked(False)
+        self.assertFalse(self.window._peak_hold_auto_reset_timer.isActive())
+        self.assertEqual(
+            self.window._peak_hold_auto_reset_button.text(),
+            "Peak Auto Reset: Off",
+        )
+        self.assertEqual(
+            self.window._status_label.text(),
+            "Peak hold auto reset disabled",
+        )
 
     def test_replay_eof_surfaces_a_stopped_status(self) -> None:
         fixture_root = ROOT / "tests" / "fixtures"

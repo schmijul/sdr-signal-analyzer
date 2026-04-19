@@ -199,6 +199,11 @@ public:
     analyzer_.UpdateConfig(config);
   }
 
+  void ResetPeakHold() {
+    std::scoped_lock analysis_lock(analysis_mutex_);
+    analyzer_.ResetPeakHold();
+  }
+
   bool StartRecording(const RecordingConfig &config) {
     SourceConfig source_config_copy;
     {
@@ -448,6 +453,7 @@ bool AnalyzerSession::update_source_config(const SourceConfig &config) {
 void AnalyzerSession::update_processing_config(const ProcessingConfig &config) {
   impl_->UpdateProcessingConfig(config);
 }
+void AnalyzerSession::reset_peak_hold() { impl_->ResetPeakHold(); }
 bool AnalyzerSession::start_recording(const RecordingConfig &config) {
   return impl_->StartRecording(config);
 }

@@ -151,6 +151,7 @@ PYBIND11_MODULE(_sdr_signal_analyzer, module) {
       .def("update_source_config", &AnalyzerSession::update_source_config)
       .def("update_processing_config",
            &AnalyzerSession::update_processing_config)
+      .def("reset_peak_hold", &AnalyzerSession::reset_peak_hold)
       .def("start_recording", &AnalyzerSession::start_recording)
       .def("stop_recording", &AnalyzerSession::stop_recording)
       .def("poll_snapshot", &AnalyzerSession::poll_snapshot)
