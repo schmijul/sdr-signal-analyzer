@@ -104,13 +104,6 @@ Current validation signal:
 - docs build in strict mode
 - attached-device evidence is still pending and is intentionally documented as such
 
-## Roadmap
-
-- [ ] first committed attached-device validation report
-- [ ] UHD validation
-- [ ] multi-device support
-- [ ] performance benchmarks
-
 ## Install
 
 From source today:
